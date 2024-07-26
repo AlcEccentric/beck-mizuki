@@ -1,11 +1,10 @@
-package subject
+package model
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
-
-	"github.com/alceccentric/beck-crawler/dao/bgm"
 )
 
 type SubjectSearchRequest struct {
@@ -15,16 +14,20 @@ type SubjectSearchRequest struct {
 	RatingRange  [2]float32
 }
 
+const (
+	DateFormat = "2006-01-02"
+)
+
 func (request *SubjectSearchRequest) ToBody() string {
 
-	startDate := request.AirDateRange[0].Format(bgm.DateFormat)
-	endDate := request.AirDateRange[1].Format(bgm.DateFormat)
+	startDate := request.AirDateRange[0].Format(DateFormat)
+	endDate := request.AirDateRange[1].Format(DateFormat)
 
 	return `{
 		"keyword": "",
 		"sort": "",
 		"filter": {
-		  "type": [` + strings.Join(SubjectTypeToString(request.Type), ",") + `],
+		  "type": [` + strings.Join(subjectTypeToString(request.Type), ",") + `],
 		  "tag": ["` + strings.Join(request.Tag, ",") + `"],
 		  "air_date": [
 			">=` + startDate + `",
@@ -37,4 +40,12 @@ func (request *SubjectSearchRequest) ToBody() string {
 		  "rank": []
 		}
 	  }`
+}
+
+func subjectTypeToString(a []SubjectType) []string {
+	b := make([]string, len(a))
+	for i, v := range a {
+		b[i] = strconv.Itoa(int(v))
+	}
+	return b
 }

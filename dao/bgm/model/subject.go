@@ -1,4 +1,4 @@
-package subject
+package model
 
 type SubjectType int
 
