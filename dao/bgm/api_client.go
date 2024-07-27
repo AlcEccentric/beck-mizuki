@@ -48,6 +48,32 @@ func (apiClient *BgmApiClient) GetSubjects(request bgmModel.SubjectSearchRequest
 	}
 }
 
+func (apiClient *BgmApiClient) GetSubjectSlice(request bgmModel.SubjectSearchRequest, index int) []bgmModel.Subject {
+	offset := 0
+	subjects := make([]bgmModel.Subject, 0)
+	fmt.Printf("Producer: %d started\n", index)
+	for {
+		subjectResults, err := apiClient.getSubjects(request, offset)
+		if err != nil {
+			panic(err)
+		}
+		for _, subjectResult := range subjectResults {
+			subjects = append(subjects, bgmModel.Subject{
+				Id:        subjectResult.Get("id").String(),
+				Type:      bgmModel.SubjectType(subjectResult.Get("type").Int()),
+				Name:      subjectResult.Get("name").String(),
+				AvgRating: float32(subjectResult.Get("score").Float()),
+			})
+		}
+		if len(subjectResults) < PageSize {
+			break
+		}
+		offset += PageSize
+	}
+	fmt.Printf("Producer: %d found %d subjects\n", index, len(subjects))
+	return subjects
+}
+
 func (bgmClient *BgmApiClient) getSubjects(request bgmModel.SubjectSearchRequest, offset int) (subjects []gjson.Result, err error) {
 	resp, err := bgmClient.httpClient.R().EnableTrace().
 		SetHeader("Content-Type", "application/json").
