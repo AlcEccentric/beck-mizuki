@@ -38,7 +38,6 @@ func NewSubjectOrchestrator(bgmClient *bgm.BgmApiClient, numOfCollectionProducer
 }
 
 func (orch *SubjectOrchestrator) Run() {
-
 	subjectProducerFn := orch.getSubjectProducer()
 	userProducerFn := orch.getUserProducer()
 
@@ -66,7 +65,6 @@ func (orch *SubjectOrchestrator) getSubjectProducer() func(put func(*job)) error
 	daysPerProduer := int(endDate.Sub(startDate).Hours()/24) / orch.numOfSubjectProducers
 
 	return func(put func(*job)) error {
-
 		var wg sync.WaitGroup
 		for i := 0; i < orch.numOfSubjectProducers; i++ {
 			index := i
