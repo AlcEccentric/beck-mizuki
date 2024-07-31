@@ -51,7 +51,7 @@ func (apiClient *BgmApiClient) GetSubjects(request bgmModel.SubjectSearchRequest
 func (apiClient *BgmApiClient) GetSubjectSlice(request bgmModel.SubjectSearchRequest, index int) []bgmModel.Subject {
 	offset := 0
 	subjects := make([]bgmModel.Subject, 0)
-	fmt.Printf("Producer: %d started\n", index)
+	// fmt.Printf("Producer: %d started\n", index)
 	for {
 		subjectResults, err := apiClient.getSubjects(request, offset)
 		if err != nil {
