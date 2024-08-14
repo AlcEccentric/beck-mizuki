@@ -1,4 +1,4 @@
-package util
+package scraper
 
 import (
 	"math/rand"

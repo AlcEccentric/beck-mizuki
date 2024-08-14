@@ -8,7 +8,6 @@ import (
 	"time"
 	"unicode"
 
-	scraperUtil "github.com/alceccentric/beck-crawler/scraper/util"
 	"github.com/gocolly/colly"
 )
 
@@ -34,7 +33,7 @@ func NewSubjectUserScraper(collectionTimeHorizonInDays, uidChanSize int) *Subjec
 }
 
 func initColly() *colly.Collector {
-	agentGen := scraperUtil.NewUserAgentGenerator()
+	agentGen := NewUserAgentGenerator()
 	collector := colly.NewCollector(
 		colly.UserAgent(agentGen.RandomUserAgent()),
 		colly.Async(true),
