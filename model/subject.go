@@ -5,10 +5,10 @@ type SubjectType int
 // Define constants using iota
 const (
 	_ SubjectType = iota
-	Manga
-	Anime
+	MangaType
+	AnimeType
 	_
-	Game
+	GameType
 )
 
 type Subject struct {

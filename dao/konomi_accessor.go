@@ -1,4 +1,4 @@
-package db
+package dao
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	dbModel "github.com/alceccentric/beck-crawler/dao/db/model"
+	model "github.com/alceccentric/beck-crawler/model"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,16 +19,16 @@ const (
 	userCollectionTableName = "user_collection"
 )
 
-type MongoAccessor struct {
+type KonomiAccessor struct {
 	client *mongo.Client
 }
 
-func NewMongoAccessor() *MongoAccessor {
+func NewMongoAccessor() *KonomiAccessor {
 	client, err := getMongoClient()
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &MongoAccessor{
+	return &KonomiAccessor{
 		client: client,
 	}
 }
@@ -53,14 +53,14 @@ func getMongoClient() (*mongo.Client, error) {
 	return client, nil
 }
 
-func (mongoAccessor *MongoAccessor) Disconnect() {
+func (mongoAccessor *KonomiAccessor) Disconnect() {
 	err := mongoAccessor.client.Disconnect(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (mongoAccessor *MongoAccessor) InsertUser(user dbModel.User) {
+func (mongoAccessor *KonomiAccessor) InsertUser(user model.User) {
 	userTable := mongoAccessor.client.Database("beck-konomi").Collection("user")
 	_, err := userTable.InsertOne(context.TODO(), user)
 	if err != nil {
@@ -68,10 +68,10 @@ func (mongoAccessor *MongoAccessor) InsertUser(user dbModel.User) {
 	}
 }
 
-func (mongoAccessor *MongoAccessor) InsertUserCollection(userCollection dbModel.UserCollection) {
-	userCollectionTable := mongoAccessor.client.Database("beck-konomi").Collection("user_collection")
-	_, err := userCollectionTable.InsertOne(context.TODO(), userCollection)
+func (mongoAccessor *KonomiAccessor) InsertCollection(collection model.Collection) {
+	collectionTable := mongoAccessor.client.Database("beck-konomi").Collection("user_collection")
+	_, err := collectionTable.InsertOne(context.TODO(), collection)
 	if err != nil {
-		log.Fatalf("Failed to insert user collection with user id: %s, subject id: %s with error: %v", userCollection.UserID, userCollection.SubjectID, err)
+		log.Fatalf("Failed to insert user collection with user id: %s, subject id: %s with error: %v", collection.UserID, collection.SubjectID, err)
 	}
 }

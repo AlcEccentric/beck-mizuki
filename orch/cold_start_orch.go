@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-pipeline/pkg/pipeline"
 
-	bgm "github.com/alceccentric/beck-crawler/dao/bgm"
+	dao "github.com/alceccentric/beck-crawler/dao"
 	"github.com/alceccentric/beck-crawler/service"
 )
 
@@ -19,7 +19,7 @@ const (
 )
 
 type ColdStartOrchestrator struct {
-	bgmClient                *bgm.BgmApiClient
+	bgmClient                *dao.BgmApiAccessor
 	numOfSubjectProducers    int
 	numOfUserProducers       int
 	numOfCollectionProducers int
@@ -27,7 +27,7 @@ type ColdStartOrchestrator struct {
 	userIdSvc                *service.UserIdService
 }
 
-func NewColdStartOrchestrator(bgmClient *bgm.BgmApiClient, numOfCollectionProducers, numOfUserProducers, numOfSubjectProducers int) *ColdStartOrchestrator {
+func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, numOfCollectionProducers, numOfUserProducers, numOfSubjectProducers int) *ColdStartOrchestrator {
 	return &ColdStartOrchestrator{
 		bgmClient:                bgmClient,
 		numOfSubjectProducers:    numOfSubjectProducers,

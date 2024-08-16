@@ -32,7 +32,7 @@ type User struct {
 }
 
 func main() {
-	// bgmClient := bgm.NewBgmApiClient()
+	// bgmClient := bgm.NewBgmApiAccessor()
 	// subjectOrch := orch.NewSubjectOrchestrator(&bgmClient, numOfCollectionProducers, numOfUserProducers, numOfSubjectProducers)
 	// subjectOrch.Run()
 

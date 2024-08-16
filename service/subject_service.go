@@ -1,12 +1,13 @@
 package service
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/alceccentric/beck-crawler/dao/bgm"
-	bgmModel "github.com/alceccentric/beck-crawler/dao/bgm/model"
-	job "github.com/alceccentric/beck-crawler/orch/job"
+	dao "github.com/alceccentric/beck-crawler/dao"
+	model "github.com/alceccentric/beck-crawler/model"
+	job "github.com/alceccentric/beck-crawler/model/job"
 )
 
 const (
@@ -18,10 +19,10 @@ const (
 )
 
 type SubjectService struct {
-	bgmClient *bgm.BgmApiClient
+	bgmClient *dao.BgmApiAccessor
 }
 
-func NewSubjectService(bgmClient *bgm.BgmApiClient) *SubjectService {
+func NewSubjectService(bgmClient *dao.BgmApiAccessor) *SubjectService {
 	return &SubjectService{
 		bgmClient: bgmClient,
 	}
@@ -45,17 +46,21 @@ func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(pu
 					curEndDate = endDate
 				}
 
-				subjects := svc.bgmClient.GetSubjectSlice(bgmModel.SubjectSearchRequest{
-					Tag:          []string{"日本动画"},
-					Type:         []bgmModel.SubjectType{bgmModel.Anime},
-					AirDateRange: [2]time.Time{curStartDate, curEndDate},
-					RatingRange:  [2]float32{0, 10},
-				}, index)
+				subjects, err := svc.bgmClient.GetSubjects(
+					[]string{"日本动画"},
+					[]model.SubjectType{model.AnimeType},
+					[2]time.Time{curStartDate, curEndDate},
+					[2]float32{0, 10},
+				)
 
-				j := &job.ColdStartOrchJob{
-					Subjects: subjects,
+				if err == nil {
+					j := &job.ColdStartOrchJob{
+						Subjects: subjects,
+					}
+					put(j)
+				} else {
+					fmt.Printf("Error getting subjects: %v with curStartDate: %s and curEndDate: %s. Skipping...", err, curStartDate, curEndDate)
 				}
-				put(j)
 			}(index)
 		}
 		wg.Wait()

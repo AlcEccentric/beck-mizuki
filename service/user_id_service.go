@@ -3,8 +3,8 @@ package service
 import (
 	"sync"
 
-	bgmModel "github.com/alceccentric/beck-crawler/dao/bgm/model"
-	orchJob "github.com/alceccentric/beck-crawler/orch/job"
+	model "github.com/alceccentric/beck-crawler/model"
+	orchJob "github.com/alceccentric/beck-crawler/model/job"
 	"github.com/alceccentric/beck-crawler/scraper"
 )
 
@@ -22,7 +22,7 @@ func (orch *UserIdService) GetUserIdCollector(collectionTimeHorizonInDays int) f
 		var wg sync.WaitGroup
 		for _, subject := range in.Subjects {
 			wg.Add(1)
-			go func(subject bgmModel.Subject) {
+			go func(subject model.Subject) {
 				defer wg.Done()
 				subjectUserScraper.Crawl(subject.Id)
 			}(subject)
