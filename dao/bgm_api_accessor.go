@@ -85,7 +85,8 @@ func (apiClient *BgmApiAccessor) GetUser(uid string) (model.User, error) {
 	}
 }
 
-func (apiClient *BgmApiAccessor) GetUserCollections(uid string, ctype model.CollectionType, stype model.SubjectType) ([]model.Collection, error) {
+func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.CollectionType, stype model.SubjectType, accepts func(gjson.Result) bool) ([]model.Collection, error) {
+
 	offset := 0
 	collections := make([]model.Collection, 0)
 	for {
@@ -105,14 +106,16 @@ func (apiClient *BgmApiAccessor) GetUserCollections(uid string, ctype model.Coll
 
 		collectionResults := respBody.Get("data").Array()
 		for _, collectionResult := range collectionResults {
-			collections = append(collections, model.Collection{
-				UserID:         uid,
-				SubjectType:    int(stype),
-				SubjectID:      collectionResult.Get("subject_id").String(),
-				CollectionType: int(ctype),
-				CollectedTime:  collectionResult.Get("updated_at").String(),
-				Rating:         int(collectionResult.Get("rate").Int()),
-			})
+			if accepts(collectionResult) {
+				collections = append(collections, model.Collection{
+					UserID:         uid,
+					SubjectType:    int(stype),
+					SubjectID:      collectionResult.Get("subject_id").String(),
+					CollectionType: int(ctype),
+					CollectedTime:  collectionResult.Get("updated_at").String(),
+					Rating:         int(collectionResult.Get("rate").Int()),
+				})
+			}
 		}
 		if len(collectionResults) < pageLimit {
 			break
@@ -150,7 +153,7 @@ func (apiClient *BgmApiAccessor) getLatestCollectionTime(uid string) (time.Time,
 	getLatestCollectionRequest := &req.GetPagedUserCollectionsRequest{
 		Uid:            uid,
 		CollectionType: model.Watched,
-		SubjectType:    model.AnimeType,
+		SubjectType:    model.Anime,
 		Limit:          1,
 		Offset:         0,
 	}

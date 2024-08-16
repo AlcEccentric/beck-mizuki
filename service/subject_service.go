@@ -48,7 +48,7 @@ func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(pu
 
 				subjects, err := svc.bgmClient.GetSubjects(
 					[]string{"日本动画"},
-					[]model.SubjectType{model.AnimeType},
+					[]model.SubjectType{model.Anime},
 					[2]time.Time{curStartDate, curEndDate},
 					[2]float32{0, 10},
 				)
