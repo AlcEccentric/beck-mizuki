@@ -25,9 +25,10 @@ type ColdStartOrchestrator struct {
 	numOfCollectionProducers int
 	subjectSvc               *service.SubjectService
 	userIdSvc                *service.UserIdService
+	persistenceService       *service.UserPersistenceService
 }
 
-func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, numOfCollectionProducers, numOfUserProducers, numOfSubjectProducers int) *ColdStartOrchestrator {
+func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao.KonomiAccessor, numOfCollectionProducers, numOfUserProducers, numOfSubjectProducers int) *ColdStartOrchestrator {
 	return &ColdStartOrchestrator{
 		bgmClient:                bgmClient,
 		numOfSubjectProducers:    numOfSubjectProducers,
@@ -35,6 +36,7 @@ func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, numOfCollectionProd
 		numOfCollectionProducers: numOfCollectionProducers,
 		subjectSvc:               service.NewSubjectService(bgmClient),
 		userIdSvc:                service.NewUserIdService(),
+		persistenceService:       service.NewUserPersistenceService(bgmClient, konomiAccessor),
 	}
 }
 
@@ -68,5 +70,10 @@ func (orch *ColdStartOrchestrator) Run() {
 		fmt.Printf("Do() failed: %s", err)
 	} else {
 		fmt.Println(len(userIdSet))
+		userIds := make([]string, 0, len(userIdSet))
+		for uid := range userIdSet {
+			userIds = append(userIds, uid)
+		}
+		orch.persistenceService.Persist(userIds)
 	}
 }

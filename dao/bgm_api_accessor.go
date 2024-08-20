@@ -2,6 +2,8 @@ package dao
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +16,8 @@ import (
 const (
 	ApiDomain = "https://api.bgm.tv"
 	pageLimit = 50
+	// We assume a real person will not watch more than 10000 anime in one's life
+	maxWatchedAnimeCount = 10000
 )
 
 type BgmApiAccessor struct {
@@ -67,7 +71,8 @@ func (apiClient *BgmApiAccessor) GetUser(uid string) (model.User, error) {
 	getUserResult, resp, getUserErr := apiClient.get(&req.GetUserRequest{
 		Uid: uid,
 	})
-	latestCollectionTime, getLatestCollectionErr := apiClient.getLatestCollectionTime(uid)
+	// index 0 points to the latest collection
+	latestCollectionTime, getLatestCollectionErr := apiClient.GetCollectionTime(uid, 0)
 
 	if getUserErr != nil {
 		return model.User{}, getUserErr
@@ -85,8 +90,7 @@ func (apiClient *BgmApiAccessor) GetUser(uid string) (model.User, error) {
 	}
 }
 
-func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.CollectionType, stype model.SubjectType, accepts func(gjson.Result) bool) ([]model.Collection, error) {
-
+func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.CollectionType, stype model.SubjectType, collectionAcceptor func(gjson.Result) bool) ([]model.Collection, error) {
 	offset := 0
 	collections := make([]model.Collection, 0)
 	for {
@@ -106,7 +110,7 @@ func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.Collecti
 
 		collectionResults := respBody.Get("data").Array()
 		for _, collectionResult := range collectionResults {
-			if accepts(collectionResult) {
+			if collectionAcceptor(collectionResult) {
 				collections = append(collections, model.Collection{
 					UserID:         uid,
 					SubjectType:    int(stype),
@@ -125,37 +129,47 @@ func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.Collecti
 	return collections, nil
 }
 
-func (apiClient *BgmApiAccessor) IsCollectionMoreThan(uid string, ctype model.CollectionType, stype model.SubjectType, count int) (bool, error) {
+func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.CollectionType, stype model.SubjectType) (int, error) {
 	request := &req.GetPagedUserCollectionsRequest{
 		Uid:            uid,
 		CollectionType: ctype,
 		SubjectType:    stype,
 		Limit:          1,
-		Offset:         count,
+		Offset:         maxWatchedAnimeCount,
 	}
 
 	respBody, resp, err := apiClient.get(request)
 
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
 	if resp.IsSuccess() {
-		return true, nil
+		return 0, fmt.Errorf("found a moron who said she/he watched more than %d animes", maxWatchedAnimeCount)
 	} else if resp.StatusCode() == 400 && strings.Contains(respBody.Get("description").String(), "offset should be less than or equal to") {
-		return false, nil
+		re := regexp.MustCompile(`less than or equal to (\d+)`)
+		match := re.FindStringSubmatch(respBody.Get("description").String())
+		if len(match) > 1 {
+			if count, err := strconv.Atoi(match[1]); err == nil {
+				return count, nil
+			} else {
+				return 0, err
+			}
+		} else {
+			return 0, fmt.Errorf("not able to find collection count from message %s", respBody.Get("description").String())
+		}
 	} else {
-		return false, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+		return 0, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 	}
 }
 
-func (apiClient *BgmApiAccessor) getLatestCollectionTime(uid string) (time.Time, error) {
+func (apiClient *BgmApiAccessor) GetCollectionTime(uid string, offset int) (time.Time, error) {
 	getLatestCollectionRequest := &req.GetPagedUserCollectionsRequest{
 		Uid:            uid,
 		CollectionType: model.Watched,
 		SubjectType:    model.Anime,
 		Limit:          1,
-		Offset:         0,
+		Offset:         offset,
 	}
 	respBody, resp, err := apiClient.get(getLatestCollectionRequest)
 	if err != nil {
