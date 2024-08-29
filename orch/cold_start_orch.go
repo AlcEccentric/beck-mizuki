@@ -10,39 +10,28 @@ import (
 )
 
 const (
-	dateFormat = "2006-01-02"
-
-	// TODO: make these configurable
-	earliestSubjectDate         = "1993-10-01"
-	latestSubjectDate           = "1993-12-31"
-	collectionTimeHorizonInDays = 30
+	collectionTimeHorizonInDays = 7
 )
 
 type ColdStartOrchestrator struct {
-	bgmClient                *dao.BgmApiAccessor
-	numOfSubjectProducers    int
-	numOfUserProducers       int
-	numOfCollectionProducers int
-	subjectSvc               *service.SubjectService
-	userIdSvc                *service.UserIdService
-	persistenceService       *service.UserPersistenceService
+	bgmClient          *dao.BgmApiAccessor
+	subjectSvc         *service.SubjectService
+	userIdSvc          *service.UserIdService
+	persistenceService *service.UserPersistenceService
 }
 
-func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao.KonomiAccessor, numOfCollectionProducers, numOfUserProducers, numOfSubjectProducers int) *ColdStartOrchestrator {
+func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao.KonomiAccessor) *ColdStartOrchestrator {
 	return &ColdStartOrchestrator{
-		bgmClient:                bgmClient,
-		numOfSubjectProducers:    numOfSubjectProducers,
-		numOfUserProducers:       numOfUserProducers,
-		numOfCollectionProducers: numOfCollectionProducers,
-		subjectSvc:               service.NewSubjectService(bgmClient),
-		userIdSvc:                service.NewUserIdService(),
-		persistenceService:       service.NewUserPersistenceService(bgmClient, konomiAccessor),
+		bgmClient:          bgmClient,
+		subjectSvc:         service.NewSubjectService(bgmClient),
+		userIdSvc:          service.NewUserIdService(),
+		persistenceService: service.NewUserPersistenceService(bgmClient, konomiAccessor),
 	}
 }
 
-func (orch *ColdStartOrchestrator) Run() {
-	subjectProducerFn := orch.subjectSvc.GetSubjectProducer(orch.numOfSubjectProducers)
-	userProducerFn := orch.userIdSvc.GetUserIdCollector(orch.numOfUserProducers)
+func (orch *ColdStartOrchestrator) Run(numOfSubjectProducers, numOfUserProducers, numOfUserIdMergers int) {
+	subjectProducerFn := orch.subjectSvc.GetSubjectProducer(numOfSubjectProducers)
+	userProducerFn := orch.userIdSvc.GetUserIdCollector(collectionTimeHorizonInDays)
 	userMergerFn, userIdSet := orch.userIdSvc.GetUserIdMerger()
 
 	subjectProducer := pipeline.NewProducer(
@@ -53,13 +42,13 @@ func (orch *ColdStartOrchestrator) Run() {
 	userProducer := pipeline.NewStage(
 		userProducerFn,
 		pipeline.Name("Retrieve users that comment on subjects"),
-		pipeline.Concurrency(uint(orch.numOfUserProducers)),
+		pipeline.Concurrency(uint(numOfUserProducers)),
 	)
 
 	userMerger := pipeline.NewStage(
 		userMergerFn,
 		pipeline.Name("User collection data persistion"),
-		pipeline.Concurrency(uint(orch.numOfUserProducers)),
+		pipeline.Concurrency(uint(numOfUserIdMergers)),
 	)
 
 	if err := pipeline.Do(
@@ -69,7 +58,7 @@ func (orch *ColdStartOrchestrator) Run() {
 	); err != nil {
 		fmt.Printf("Do() failed: %s", err)
 	} else {
-		fmt.Println(len(userIdSet))
+		fmt.Printf("Received %d users\n", len(userIdSet))
 		userIds := make([]string, 0, len(userIdSet))
 		for uid := range userIdSet {
 			userIds = append(userIds, uid)

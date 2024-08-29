@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -11,10 +10,10 @@ import (
 )
 
 const (
-	minWatchedAnimeCount  = 300
-	minActiveTimeInDays   = 365
-	maxInactiveTimeInDays = 90
-	minCollectionCount    = 200
+	// No need to check recent activity in this class
+	// as the SubUser_Scaper already does that when fetching users from collection page
+	minActiveTimeInDays = 365
+	minCollectionCount  = 300
 )
 
 var tagsToReject = map[string]struct{}{
@@ -73,23 +72,50 @@ func (svc *UserPersistenceService) Persist(uids []string) error {
 }
 
 func (svc *UserPersistenceService) isVIP(uid string) bool {
-	watchedCount, countErr := svc.bgmClient.GetCollectionCount(uid, model.Watched, model.Anime)
-	earliestCollectionTime, earliestTimeErr := svc.bgmClient.GetCollectionTime(uid, watchedCount-1)
-	latestCollectionTime, latestTimeErr := svc.bgmClient.GetCollectionTime(uid, 0)
-	joinedError := errors.Join(countErr, earliestTimeErr, latestTimeErr)
-
-	if joinedError != nil {
-		fmt.Println(joinedError)
+	// a valid vip user must meet the following criteria:
+	// watched at least minWatchedAnimeCount anime
+	// earliest collection is at least minActiveTimeInDays from today
+	// inactive for at most maxInactiveTimeInDays
+	collectedEnough, collectionCnt := svc.hasEnoughCollection(uid)
+	if !collectedEnough {
 		return false
 	}
 
-	// a valid vip user must meet the following criteria:
-	// watched at least minWatchedAnimeCount anime
-	// active for at least minActiveTimeInDays
-	// inactive for at most maxInactiveTimeInDays
-	return watchedCount >= minWatchedAnimeCount &&
-		time.Since(earliestCollectionTime) >= time.Hour*24*minActiveTimeInDays &&
-		time.Since(latestCollectionTime) <= time.Hour*24*maxInactiveTimeInDays
+	if !svc.isLoyal(uid, collectionCnt) {
+		return false
+	}
+
+	return true
+}
+
+func (svc *UserPersistenceService) hasEnoughCollection(uid string) (bool, int) {
+	collectionCount, err := svc.bgmClient.GetCollectionCount(uid, model.Watched, model.Anime)
+
+	if err != nil {
+		fmt.Println(err)
+		return false, -1
+	}
+
+	if collectionCount < minCollectionCount {
+		fmt.Println(fmt.Errorf("user: %s has not collected %d subjects", uid, minCollectionCount))
+		return false, collectionCount
+	}
+	return true, collectionCount
+}
+
+func (svc *UserPersistenceService) isLoyal(uid string, collected int) bool {
+	earliestCollectionTime, err := svc.bgmClient.GetCollectionTime(uid, collected-1)
+
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	if time.Since(earliestCollectionTime) < time.Hour*24*minActiveTimeInDays {
+		fmt.Println(fmt.Errorf("user: %s earliest collection time was under %d days from today", uid, minActiveTimeInDays))
+		return false
+	}
+	return true
 }
 
 func (svc *UserPersistenceService) getUser(uid string) (model.User, error) {

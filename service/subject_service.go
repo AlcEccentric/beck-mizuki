@@ -14,8 +14,8 @@ const (
 	subjectDateFormat = "2006-01-02"
 
 	// TODO: make these configurable
-	earliestSubjectDate = "1993-10-01"
-	latestSubjectDate   = "1993-12-31"
+	earliestSubjectDate = "2023-12-01"
+	latestSubjectDate   = "2023-12-31"
 )
 
 type SubjectService struct {

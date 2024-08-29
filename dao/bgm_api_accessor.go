@@ -17,15 +17,15 @@ const (
 	ApiDomain = "https://api.bgm.tv"
 	pageLimit = 50
 	// We assume a real person will not watch more than 10000 anime in one's life
-	maxWatchedAnimeCount = 10000
+	maxWatchedAnimeCount = 3000
 )
 
 type BgmApiAccessor struct {
 	httpClient *resty.Client
 }
 
-func NewBgmApiAccessor() BgmApiAccessor {
-	return BgmApiAccessor{
+func NewBgmApiAccessor() *BgmApiAccessor {
+	return &BgmApiAccessor{
 		httpClient: resty.New(),
 	}
 }
@@ -34,6 +34,7 @@ func (apiClient *BgmApiAccessor) GetSubjects(tags []string, types []model.Subjec
 	offset := 0
 	subjects := make([]model.Subject, 0)
 	for {
+		fmt.Printf("Sending get subjects request with time range %s and offset %d\n", airDateRange, offset)
 		respBody, resp, err := apiClient.post(&req.SearchSubjectPagedRequest{
 			Tags:         tags,
 			Types:        types,
@@ -68,6 +69,7 @@ func (apiClient *BgmApiAccessor) GetSubjects(tags []string, types []model.Subjec
 }
 
 func (apiClient *BgmApiAccessor) GetUser(uid string) (model.User, error) {
+	fmt.Printf("Sending get user request\n")
 	getUserResult, resp, getUserErr := apiClient.get(&req.GetUserRequest{
 		Uid: uid,
 	})
@@ -94,6 +96,7 @@ func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.Collecti
 	offset := 0
 	collections := make([]model.Collection, 0)
 	for {
+		fmt.Printf("Sending get collections request\n")
 		respBody, resp, err := apiClient.get(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
@@ -138,6 +141,7 @@ func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.Coll
 		Offset:         maxWatchedAnimeCount,
 	}
 
+	fmt.Printf("Sending get collection count request\n")
 	respBody, resp, err := apiClient.get(request)
 
 	if err != nil {
@@ -171,6 +175,8 @@ func (apiClient *BgmApiAccessor) GetCollectionTime(uid string, offset int) (time
 		Limit:          1,
 		Offset:         offset,
 	}
+
+	fmt.Printf("Sending get latest collection request\n")
 	respBody, resp, err := apiClient.get(getLatestCollectionRequest)
 	if err != nil {
 		return time.Now(), err

@@ -49,8 +49,6 @@ func initColly() *colly.Collector {
 }
 
 func (scraper *SubjectUserScraper) Crawl(sid string) {
-	fmt.Printf("Crawling subject id: %s\n", sid)
-
 	ctx := colly.NewContext()
 	ctx.Put("subjectId", sid)
 
@@ -72,20 +70,16 @@ func (scraper *SubjectUserScraper) CollectUids() []string {
 	for uid := range uidSet {
 		uidSlice = append(uidSlice, uid)
 	}
-
-	fmt.Print("Collected uids: ", len(uidSlice), "\n")
 	return uidSlice
 }
 
 func (scraper *SubjectUserScraper) registerHandler() {
 	scraper.collector.OnHTML("div.mainWrapper", scraper.handleMainWrapper)
-	scraper.collector.OnRequest(func(r *colly.Request) {
-		fmt.Println("Scaping users from subject with url:", r.URL)
-	})
 }
 
 func (scraper *SubjectUserScraper) handleMainWrapper(page *colly.HTMLElement) {
 	maxIndex, err := scraper.getMaxIndex(page)
+	fmt.Printf("Processing page %s\n", page.Request.URL.String())
 	if err != nil {
 		fmt.Println("Failed to get max index:", err)
 		return
@@ -100,6 +94,8 @@ func (scraper *SubjectUserScraper) handleMainWrapper(page *colly.HTMLElement) {
 	beyondTimeHorizon := scraper.processUserCollections(page, sid)
 	if !beyondTimeHorizon {
 		scraper.checkAndVisitNextPage(page, sid, maxIndex)
+	} else {
+		// fmt.Printf("Wont check next page and stop at %s\n", page.Request.URL.String())
 	}
 }
 
@@ -111,15 +107,15 @@ func (scraper *SubjectUserScraper) processUserCollections(page *colly.HTMLElemen
 
 		if err != nil {
 			fmt.Println("Failed to get collection time for uid:", uid, "for subject id:", sid, "with err:", err)
-			return true // Continue processing other user collections
+			return true // skip this and continue
 		}
 
 		if scraper.isBeyondTimeHorizon(collectionTime) {
 			beyondTimeHorizon = true
-			return false
+			return false // stop processing
 		} else {
 			scraper.uidChan <- uid
-			return true
+			return true // skip this and continue
 		}
 	})
 	return beyondTimeHorizon
@@ -136,8 +132,6 @@ func (scraper *SubjectUserScraper) checkAndVisitNextPage(page *colly.HTMLElement
 		page.Request.Ctx.Put("maxIndex", strconv.Itoa(maxIndex))
 		fmt.Printf("Going to visit subject id: %s, index: %d\n", sid, curIndex+1)
 		page.Request.Visit(fmt.Sprintf(subjectCollectionUrlFormat, sid, curIndex+1))
-	} else {
-		fmt.Printf("Finished crawling subject id: %s\n", sid)
 	}
 }
 

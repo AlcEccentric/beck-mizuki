@@ -8,6 +8,7 @@ import (
 
 	model "github.com/alceccentric/beck-crawler/model"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -16,14 +17,14 @@ const (
 	mongoAppName            = "beck-konomi"
 	databaseName            = "beck-konomi"
 	userTableName           = "user"
-	userCollectionTableName = "user_collection"
+	userCollectionTableName = "user-collection"
 )
 
 type KonomiAccessor struct {
 	client *mongo.Client
 }
 
-func NewMongoAccessor() *KonomiAccessor {
+func NewKonomiAccessor() *KonomiAccessor {
 	client, err := getMongoClient()
 	if err != nil {
 		log.Fatal(err)
@@ -61,16 +62,25 @@ func (mongoAccessor *KonomiAccessor) Disconnect() {
 }
 
 func (mongoAccessor *KonomiAccessor) InsertUser(user model.User) {
-	userTable := mongoAccessor.client.Database("beck-konomi").Collection("user")
-	_, err := userTable.InsertOne(context.TODO(), user)
+	userTable := mongoAccessor.client.Database("beck-konomi").Collection(userTableName)
+	filter := bson.M{"_id": user.ID}
+	update := bson.M{"$set": user}
+
+	_, err := userTable.UpdateOne(context.TODO(), filter, update, options.Update().SetUpsert(true))
 	if err != nil {
 		log.Fatalf("Failed to insert user with id: %s with error: %v", user.ID, err)
 	}
 }
 
 func (mongoAccessor *KonomiAccessor) InsertCollection(collection model.Collection) {
-	collectionTable := mongoAccessor.client.Database("beck-konomi").Collection("user_collection")
-	_, err := collectionTable.InsertOne(context.TODO(), collection)
+	collectionTable := mongoAccessor.client.Database("beck-konomi").Collection(userCollectionTableName)
+	filter := bson.D{
+		{"user_id", collection.UserID}, // Values should match your index fields
+		{"subject_id", collection.SubjectID},
+	}
+	update := bson.M{"$set": collection}
+
+	_, err := collectionTable.UpdateOne(context.TODO(), filter, update, options.Update().SetUpsert(true))
 	if err != nil {
 		log.Fatalf("Failed to insert user collection with user id: %s, subject id: %s with error: %v", collection.UserID, collection.SubjectID, err)
 	}
