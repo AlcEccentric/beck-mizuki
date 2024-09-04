@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -18,6 +19,7 @@ const (
 	pageLimit = 50
 	// We assume a real person will not watch more than 10000 anime in one's life
 	maxWatchedAnimeCount = 3000
+	collectionTimeFormat = "2006-01-02"
 )
 
 type BgmApiAccessor struct {
@@ -96,38 +98,86 @@ func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.Collecti
 	offset := 0
 	collections := make([]model.Collection, 0)
 	for {
-		fmt.Printf("Sending get collections request\n")
-		respBody, resp, err := apiClient.get(&req.GetPagedUserCollectionsRequest{
+		originalColCnt := len(collections)
+		collections, err := apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
 			SubjectType:    stype,
 			Offset:         offset,
 			Limit:          pageLimit,
-		})
+		}, collectionAcceptor, collections)
+
 		if err != nil {
 			return nil, err
 		}
-		if resp.IsError() {
-			return nil, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
-		}
 
-		collectionResults := respBody.Get("data").Array()
-		for _, collectionResult := range collectionResults {
-			if collectionAcceptor(collectionResult) {
-				collections = append(collections, model.Collection{
-					UserID:         uid,
-					SubjectType:    int(stype),
-					SubjectID:      collectionResult.Get("subject_id").String(),
-					CollectionType: int(ctype),
-					CollectedTime:  collectionResult.Get("updated_at").String(),
-					Rating:         int(collectionResult.Get("rate").Int()),
-				})
-			}
-		}
-		if len(collectionResults) < pageLimit {
+		if len(collections)-originalColCnt < pageLimit {
 			break
 		}
 		offset += pageLimit
+	}
+	return collections, nil
+}
+
+func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
+	ctype model.CollectionType,
+	stype model.SubjectType,
+	collectionAcceptor func(gjson.Result) bool,
+	recentWindowInDays int) ([]model.Collection, error) {
+	offset := 0
+	collections := make([]model.Collection, 0)
+	for {
+		originalColCnt := len(collections)
+		collections, fetchErr := apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
+			Uid:            uid,
+			CollectionType: ctype,
+			SubjectType:    stype,
+			Offset:         offset,
+			Limit:          pageLimit,
+		}, collectionAcceptor, collections)
+		oldestCollectionTime, parseErr := time.Parse(collections[0].CollectedTime, collectionTimeFormat)
+		aggErr := errors.Join(parseErr, fetchErr)
+		if aggErr != nil {
+			return nil, aggErr
+		}
+
+		if len(collections)-originalColCnt < pageLimit {
+			break
+		}
+
+		if time.Since(oldestCollectionTime) >= time.Duration(recentWindowInDays)*24*time.Hour {
+			break
+		}
+		offset += pageLimit
+	}
+	return collections, nil
+}
+
+func (apiClient *BgmApiAccessor) addCollections(getPagedCollectionReq *req.GetPagedUserCollectionsRequest,
+	collectionAcceptor func(gjson.Result) bool,
+	collections []model.Collection) ([]model.Collection, error) {
+
+	fmt.Printf("Sending get collections request\n")
+	respBody, resp, err := apiClient.get(getPagedCollectionReq)
+	if err != nil {
+		return collections, err
+	}
+	if resp.IsError() {
+		return collections, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+	}
+
+	collectionResults := respBody.Get("data").Array()
+	for _, collectionResult := range collectionResults {
+		if collectionAcceptor(collectionResult) {
+			collections = append(collections, model.Collection{
+				UserID:         getPagedCollectionReq.Uid,
+				SubjectType:    int(getPagedCollectionReq.SubjectType),
+				SubjectID:      collectionResult.Get("subject_id").String(),
+				CollectionType: int(getPagedCollectionReq.CollectionType),
+				CollectedTime:  collectionResult.Get("updated_at").String(),
+				Rating:         int(collectionResult.Get("rate").Int()),
+			})
+		}
 	}
 	return collections, nil
 }
