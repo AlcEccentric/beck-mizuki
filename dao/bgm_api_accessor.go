@@ -1,8 +1,8 @@
 package dao
 
 import (
-	"errors"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,25 +10,20 @@ import (
 
 	model "github.com/alceccentric/beck-crawler/model"
 	req "github.com/alceccentric/beck-crawler/model/request"
+	util "github.com/alceccentric/beck-crawler/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/tidwall/gjson"
 )
 
-const (
-	ApiDomain = "https://api.bgm.tv"
-	pageLimit = 50
-	// We assume a real person will not watch more than 10000 anime in one's life
-	maxWatchedAnimeCount = 3000
-	collectionTimeFormat = "2006-01-02"
-)
-
 type BgmApiAccessor struct {
 	httpClient *resty.Client
+	randGen    *rand.Rand
 }
 
 func NewBgmApiAccessor() *BgmApiAccessor {
 	return &BgmApiAccessor{
 		httpClient: resty.New(),
+		randGen:    rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
@@ -36,14 +31,14 @@ func (apiClient *BgmApiAccessor) GetSubjects(tags []string, types []model.Subjec
 	offset := 0
 	subjects := make([]model.Subject, 0)
 	for {
-		fmt.Printf("Sending get subjects request with time range %s and offset %d\n", airDateRange, offset)
+		// fmt.Printf("Sending get subjects request with time range %s and offset %d\n", airDateRange, offset)
 		respBody, resp, err := apiClient.post(&req.SearchSubjectPagedRequest{
 			Tags:         tags,
 			Types:        types,
 			AirDateRange: airDateRange,
 			RatingRange:  ratingRange,
 			Offset:       offset,
-			Limit:        pageLimit,
+			Limit:        util.PageLimit,
 		})
 
 		if err != nil {
@@ -62,16 +57,16 @@ func (apiClient *BgmApiAccessor) GetSubjects(tags []string, types []model.Subjec
 				AvgRating: float32(subjectResult.Get("score").Float()),
 			})
 		}
-		if len(subjectResults) < pageLimit {
+		if len(subjectResults) < util.PageLimit {
 			break
 		}
-		offset += pageLimit
+		offset += util.PageLimit
 	}
 	return subjects, nil
 }
 
 func (apiClient *BgmApiAccessor) GetUser(uid string) (model.User, error) {
-	fmt.Printf("Sending get user request\n")
+	// fmt.Printf("Sending get user request\n")
 	getUserResult, resp, getUserErr := apiClient.get(&req.GetUserRequest{
 		Uid: uid,
 	})
@@ -99,22 +94,23 @@ func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.Collecti
 	collections := make([]model.Collection, 0)
 	for {
 		originalColCnt := len(collections)
-		collections, err := apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
+		var err error
+		collections, err = apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
 			SubjectType:    stype,
 			Offset:         offset,
-			Limit:          pageLimit,
+			Limit:          util.PageLimit,
 		}, collectionAcceptor, collections)
 
 		if err != nil {
 			return nil, err
 		}
 
-		if len(collections)-originalColCnt < pageLimit {
+		if len(collections) == originalColCnt {
 			break
 		}
-		offset += pageLimit
+		offset += util.PageLimit
 	}
 	return collections, nil
 }
@@ -128,27 +124,31 @@ func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
 	collections := make([]model.Collection, 0)
 	for {
 		originalColCnt := len(collections)
-		collections, fetchErr := apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
+		var fetchErr error
+		collections, fetchErr = apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
 			SubjectType:    stype,
 			Offset:         offset,
-			Limit:          pageLimit,
+			Limit:          util.PageLimit,
 		}, collectionAcceptor, collections)
-		oldestCollectionTime, parseErr := time.Parse(collections[0].CollectedTime, collectionTimeFormat)
-		aggErr := errors.Join(parseErr, fetchErr)
-		if aggErr != nil {
-			return nil, aggErr
+		if fetchErr != nil {
+			return nil, fetchErr
 		}
 
-		if len(collections)-originalColCnt < pageLimit {
+		if len(collections) == originalColCnt {
 			break
+		}
+
+		oldestCollectionTime, parseErr := time.Parse(util.CollectionTimeFormat, collections[len(collections)-1].CollectedTime)
+		if parseErr != nil {
+			return nil, parseErr
 		}
 
 		if time.Since(oldestCollectionTime) >= time.Duration(recentWindowInDays)*24*time.Hour {
 			break
 		}
-		offset += pageLimit
+		offset += util.PageLimit
 	}
 	return collections, nil
 }
@@ -157,12 +157,13 @@ func (apiClient *BgmApiAccessor) addCollections(getPagedCollectionReq *req.GetPa
 	collectionAcceptor func(gjson.Result) bool,
 	collections []model.Collection) ([]model.Collection, error) {
 
-	fmt.Printf("Sending get collections request\n")
+	// fmt.Printf("Sending get collections request\n")
 	respBody, resp, err := apiClient.get(getPagedCollectionReq)
 	if err != nil {
 		return collections, err
-	}
-	if resp.IsError() {
+	} else if exceedMaxCollectionCnt(resp, respBody) {
+		return collections, nil
+	} else if !resp.IsSuccess() {
 		return collections, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 	}
 
@@ -188,10 +189,10 @@ func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.Coll
 		CollectionType: ctype,
 		SubjectType:    stype,
 		Limit:          1,
-		Offset:         maxWatchedAnimeCount,
+		Offset:         util.MaxWatchedAnimeCount,
 	}
 
-	fmt.Printf("Sending get collection count request\n")
+	// fmt.Printf("Sending get collection count request\n")
 	respBody, resp, err := apiClient.get(request)
 
 	if err != nil {
@@ -199,8 +200,8 @@ func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.Coll
 	}
 
 	if resp.IsSuccess() {
-		return 0, fmt.Errorf("found a moron who said she/he watched more than %d animes", maxWatchedAnimeCount)
-	} else if resp.StatusCode() == 400 && strings.Contains(respBody.Get("description").String(), "offset should be less than or equal to") {
+		return 0, fmt.Errorf("found a moron %s who said she/he watched more than %d animes", uid, util.MaxWatchedAnimeCount)
+	} else if exceedMaxCollectionCnt(resp, respBody) {
 		re := regexp.MustCompile(`less than or equal to (\d+)`)
 		match := re.FindStringSubmatch(respBody.Get("description").String())
 		if len(match) > 1 {
@@ -226,7 +227,7 @@ func (apiClient *BgmApiAccessor) GetCollectionTime(uid string, offset int) (time
 		Offset:         offset,
 	}
 
-	fmt.Printf("Sending get latest collection request\n")
+	// fmt.Printf("Sending get latest collection request\n")
 	respBody, resp, err := apiClient.get(getLatestCollectionRequest)
 	if err != nil {
 		return time.Now(), err
@@ -240,10 +241,11 @@ func (apiClient *BgmApiAccessor) GetCollectionTime(uid string, offset int) (time
 }
 
 func (apiClient *BgmApiAccessor) get(request req.BgmGetRequest) (gjson.Result, *resty.Response, error) {
+	time.Sleep(time.Duration((apiClient.randGen.Intn(100) + 100)) * time.Millisecond)
 	resp, err := apiClient.httpClient.R().EnableTrace().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", "alceccentric/beck-crawler").
-		Get(ApiDomain + request.ToUri())
+		Get(util.ApiDomain + request.ToUri())
 	if err != nil {
 		return gjson.Result{}, nil, err
 	}
@@ -252,14 +254,19 @@ func (apiClient *BgmApiAccessor) get(request req.BgmGetRequest) (gjson.Result, *
 }
 
 func (apiClient *BgmApiAccessor) post(request req.BgmPostRequest) (gjson.Result, *resty.Response, error) {
+	time.Sleep(time.Duration((apiClient.randGen.Intn(100) + 100)) * time.Millisecond)
 	resp, err := apiClient.httpClient.R().EnableTrace().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", "alceccentric/beck-crawler").
 		SetBody(request.ToBody()).
-		Post(ApiDomain + request.ToUri())
+		Post(util.ApiDomain + request.ToUri())
 	if err != nil {
 		return gjson.Result{}, nil, err
 	}
 
 	return gjson.ParseBytes(resp.Body()), resp, nil
+}
+
+func exceedMaxCollectionCnt(resp *resty.Response, respBody gjson.Result) bool {
+	return resp.StatusCode() == 400 && strings.Contains(respBody.Get("description").String(), "offset should be less than or equal to")
 }

@@ -15,9 +15,9 @@ func NewUserIdService() *UserIdService {
 	return &UserIdService{}
 }
 
-func (orch *UserIdService) GetUserIdCollector(collectionTimeHorizonInDays int) func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
+func (orch *UserIdService) GetUserIdCollector(coldStartIntervalInDays int) func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
 	return func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
-		subjectUserScraper := scraper.NewSubjectUserScraper(collectionTimeHorizonInDays, len(in.Subjects))
+		subjectUserScraper := scraper.NewSubjectUserScraper(coldStartIntervalInDays, len(in.Subjects))
 
 		var wg sync.WaitGroup
 		for _, subject := range in.Subjects {

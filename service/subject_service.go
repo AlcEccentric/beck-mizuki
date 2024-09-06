@@ -8,14 +8,7 @@ import (
 	dao "github.com/alceccentric/beck-crawler/dao"
 	model "github.com/alceccentric/beck-crawler/model"
 	job "github.com/alceccentric/beck-crawler/model/job"
-)
-
-const (
-	subjectDateFormat = "2006-01-02"
-
-	// TODO: make these configurable
-	earliestSubjectDate = "2023-12-01"
-	latestSubjectDate   = "2023-12-31"
+	util "github.com/alceccentric/beck-crawler/util"
 )
 
 type SubjectService struct {
@@ -69,13 +62,13 @@ func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(pu
 }
 
 func (svc *SubjectService) getSubjectDateRange() (startDate time.Time, endDate time.Time) {
-	if sd, err := time.Parse(subjectDateFormat, earliestSubjectDate); err != nil {
+	if sd, err := time.Parse(util.SubjectDateFormat, util.EarliestSubjectDate); err != nil {
 		panic(err)
 	} else {
 		startDate = sd
 	}
 
-	if ed, err := time.Parse(subjectDateFormat, latestSubjectDate); err != nil {
+	if ed, err := time.Parse(util.SubjectDateFormat, util.LatestSubjectDate); err != nil {
 		panic(err)
 	} else {
 		endDate = ed

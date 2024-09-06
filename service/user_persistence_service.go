@@ -4,15 +4,8 @@ import (
 	"fmt"
 
 	dao "github.com/alceccentric/beck-crawler/dao"
+	"github.com/alceccentric/beck-crawler/helper"
 	model "github.com/alceccentric/beck-crawler/model"
-	util "github.com/alceccentric/beck-crawler/util"
-)
-
-const (
-	// No need to check recent activity in this class
-	// as the SubUser_Scaper already does that when fetching users from collection page
-	minActiveTimeInDays = 365
-	minCollectionCount  = 300
 )
 
 type UserPersistenceService struct {
@@ -30,19 +23,18 @@ func NewUserPersistenceService(bgmClinet *dao.BgmApiAccessor, konomiAccessor *da
 func (svc *UserPersistenceService) Persist(uids []string) error {
 	for _, uid := range uids {
 		// check if user meets criteria:
-		isVIP, collections := util.IsVip(uid, svc.bgmClient)
+		isVIP, collections := helper.IsVip(uid, svc.bgmClient)
 		if !isVIP {
 			continue
 		}
 
 		// get user
+		fmt.Printf("Found %d collections for user: %s\n", len(collections), uid)
 		user, err := svc.getUser(uid)
 		if err != nil {
 			fmt.Println(fmt.Errorf("failed to get user: %s (%w)", uid, err))
 			continue
 		}
-
-		fmt.Printf("Found %d collections for user: %s\n", len(collections), uid)
 
 		// insert user into db
 		svc.konomiAccessor.InsertUser(user)

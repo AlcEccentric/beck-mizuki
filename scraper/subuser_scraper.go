@@ -8,12 +8,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/alceccentric/beck-crawler/util"
 	"github.com/gocolly/colly"
-)
-
-const (
-	subjectCollectionUrlFormat = "https://bangumi.tv/subject/%s/collections?page=%d"
-	collectionTimeFormat       = "2006-1-2 15:04"
 )
 
 type SubjectUserScraper struct {
@@ -22,10 +18,10 @@ type SubjectUserScraper struct {
 	uidChan            chan string
 }
 
-func NewSubjectUserScraper(collectionTimeHorizonInDays, uidChanSize int) *SubjectUserScraper {
+func NewSubjectUserScraper(coldStartIntervalInDays, uidChanSize int) *SubjectUserScraper {
 	subjectUserScraper := &SubjectUserScraper{
 		collector:          initColly(),
-		oldestAccpetedTime: time.Now().AddDate(0, 0, -collectionTimeHorizonInDays),
+		oldestAccpetedTime: time.Now().AddDate(0, 0, -coldStartIntervalInDays),
 		uidChan:            make(chan string, uidChanSize),
 	}
 	subjectUserScraper.registerHandler()
@@ -52,7 +48,7 @@ func (scraper *SubjectUserScraper) Crawl(sid string) {
 	ctx := colly.NewContext()
 	ctx.Put("subjectId", sid)
 
-	scraper.collector.Request("GET", fmt.Sprintf(subjectCollectionUrlFormat, sid, 1), nil, ctx, nil)
+	scraper.collector.Request("GET", fmt.Sprintf(util.SubjectCollectionUrlFormat, sid, 1), nil, ctx, nil)
 	scraper.collector.Wait()
 }
 
@@ -131,7 +127,7 @@ func (scraper *SubjectUserScraper) checkAndVisitNextPage(page *colly.HTMLElement
 	if curIndex < maxIndex {
 		page.Request.Ctx.Put("maxIndex", strconv.Itoa(maxIndex))
 		fmt.Printf("Going to visit subject id: %s, index: %d\n", sid, curIndex+1)
-		page.Request.Visit(fmt.Sprintf(subjectCollectionUrlFormat, sid, curIndex+1))
+		page.Request.Visit(fmt.Sprintf(util.SubjectCollectionUrlFormat, sid, curIndex+1))
 	}
 }
 
@@ -141,7 +137,7 @@ func (scraper *SubjectUserScraper) isBeyondTimeHorizon(inTime time.Time) bool {
 
 func (scraper *SubjectUserScraper) getCollectionTime(collection *colly.HTMLElement) (time.Time, error) {
 	pInfoContent := collection.ChildText("p.info")
-	if parsedTime, err := time.Parse(collectionTimeFormat, replaceNonASCIIWithSpaces(pInfoContent)); err != nil {
+	if parsedTime, err := time.Parse(util.WebsiteCollectionTimeFormat, replaceNonASCIIWithSpaces(pInfoContent)); err != nil {
 		return time.Now(), fmt.Errorf("invalid collection time: %s error: %s", pInfoContent, err)
 	} else {
 		return parsedTime, nil

@@ -1,13 +1,13 @@
 package request
 
-const (
-	getGetUserUriPrefix = "/v0/users/"
-)
+import "github.com/alceccentric/beck-crawler/util"
+
+const ()
 
 type GetUserRequest struct {
 	Uid string
 }
 
 func (request *GetUserRequest) ToUri() string {
-	return getGetUserUriPrefix + request.Uid
+	return util.GetGetUserUriPrefix + request.Uid
 }

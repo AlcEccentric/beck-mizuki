@@ -7,10 +7,7 @@ import (
 	"time"
 
 	model "github.com/alceccentric/beck-crawler/model"
-)
-
-const (
-	SearchSubjectsDateFormat = "2006-01-02"
+	util "github.com/alceccentric/beck-crawler/util"
 )
 
 type SearchSubjectPagedRequest struct {
@@ -24,8 +21,8 @@ type SearchSubjectPagedRequest struct {
 
 func (request *SearchSubjectPagedRequest) ToBody() string {
 
-	startDate := request.AirDateRange[0].Format(SearchSubjectsDateFormat)
-	endDate := request.AirDateRange[1].Format(SearchSubjectsDateFormat)
+	startDate := request.AirDateRange[0].Format(util.SubjectDateFormat)
+	endDate := request.AirDateRange[1].Format(util.SubjectDateFormat)
 
 	return `{
 		"keyword": "",

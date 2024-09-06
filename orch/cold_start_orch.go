@@ -7,10 +7,7 @@ import (
 
 	dao "github.com/alceccentric/beck-crawler/dao"
 	"github.com/alceccentric/beck-crawler/service"
-)
-
-const (
-	collectionTimeHorizonInDays = 7
+	"github.com/alceccentric/beck-crawler/util"
 )
 
 type ColdStartOrchestrator struct {
@@ -31,7 +28,7 @@ func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao
 
 func (orch *ColdStartOrchestrator) Run(numOfSubjectProducers, numOfUserProducers, numOfUserIdMergers int) {
 	subjectProducerFn := orch.subjectSvc.GetSubjectProducer(numOfSubjectProducers)
-	userProducerFn := orch.userIdSvc.GetUserIdCollector(collectionTimeHorizonInDays)
+	userProducerFn := orch.userIdSvc.GetUserIdCollector(util.ColdStartIntervalInDays)
 	userMergerFn, userIdSet := orch.userIdSvc.GetUserIdMerger()
 
 	subjectProducer := pipeline.NewProducer(

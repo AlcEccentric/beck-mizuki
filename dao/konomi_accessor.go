@@ -75,8 +75,8 @@ func (mongoAccessor *KonomiAccessor) InsertUser(user model.User) {
 func (mongoAccessor *KonomiAccessor) InsertCollection(collection model.Collection) {
 	collectionTable := mongoAccessor.client.Database("beck-konomi").Collection(userCollectionTableName)
 	filter := bson.D{
-		{"user_id", collection.UserID}, // Values should match your index fields
-		{"subject_id", collection.SubjectID},
+		{Key: "user_id", Value: collection.UserID},
+		{Key: "subject_id", Value: collection.SubjectID},
 	}
 	update := bson.M{"$set": collection}
 
