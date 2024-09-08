@@ -3,12 +3,14 @@ package scraper
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/alceccentric/beck-crawler/util"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/gocolly/colly"
 	"github.com/rs/zerolog/log"
 )
@@ -72,6 +74,35 @@ func (scraper *SubjectUserScraper) CollectUids() []string {
 
 func (scraper *SubjectUserScraper) registerHandler() {
 	scraper.collector.OnHTML("div.mainWrapper", scraper.handleMainWrapper)
+
+	scraper.collector.OnError(scraper.handleRetryableError)
+}
+
+func (scraper *SubjectUserScraper) handleRetryableError(r *colly.Response, err error) {
+	shouldRetry := func(statusCode int) bool {
+		switch statusCode {
+		case http.StatusInternalServerError, http.StatusBadGateway,
+			http.StatusServiceUnavailable, http.StatusGatewayTimeout,
+			http.StatusTooManyRequests:
+			return true
+		default:
+			return false
+		}
+	}
+
+	if shouldRetry(r.StatusCode) {
+		operation := func() error {
+			return r.Request.Retry()
+		}
+
+		// Define exponential backoff strategy
+		retryErr := backoff.Retry(operation, backoff.NewExponentialBackOff())
+		if retryErr != nil {
+			log.Error().Err(err).Msgf("Failed to retry. Skipping %s", r.Request.URL.String())
+		}
+	} else {
+		log.Error().Err(err).Msgf("Failed to process. Skipping %s", r.Request.URL.String())
+	}
 }
 
 func (scraper *SubjectUserScraper) handleMainWrapper(page *colly.HTMLElement) {
