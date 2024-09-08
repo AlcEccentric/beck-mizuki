@@ -23,19 +23,22 @@ const (
 	WebsiteCollectionTimeFormat = "2006-1-2 15:04"
 
 	// API parameters
-	PageLimit           = 50
-	ApiDomain           = "https://api.bgm.tv"
-	GetGetUserUriPrefix = "/v0/users/"
+	PageLimit                  = 50
+	ApiDomain                  = "https://api.bgm.tv"
+	GetGetUserUriPrefix        = "/v0/users/"
+	APICallBaseDelayInMs       = 500
+	APICallAdditionalDelayInMs = 500
 
 	// Scraper parameters
 	SubjectCollectionUrlFormat = "https://bangumi.tv/subject/%s/collections?page=%d"
-
-	// subject filter parameters
-	// TODO: make these configurable
-	EarliestSubjectDate = "2022-01-01"
-	LatestSubjectDate   = "2022-01-10"
+	ScraperBaseDelayInS        = 1
+	ScraperAdditionalDelayInS  = 2
 
 	// Orchestration parameters
-	ColdStartIntervalInDays     = 90
-	RegularUpdateIntervalInDays = 30
+	ColdStartIntervalInDays                  = 90
+	NumOfSubjectRetrievers                   = 40
+	NumOfUserIdRetrievers                    = 1 // could be more than 1 but should be cautious as it will incur high pressure on the target website
+	NumOfUserIdMergers                       = 1 // must be one as the ids will be merged into a map and map is not thread safe
+	UserIdRetrieverCoolDownSecondsPerSubject = 2
+	RegularUpdateIntervalInDays              = 30
 )

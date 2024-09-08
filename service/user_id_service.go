@@ -2,10 +2,12 @@ package service
 
 import (
 	"sync"
+	"time"
 
 	model "github.com/alceccentric/beck-crawler/model"
 	orchJob "github.com/alceccentric/beck-crawler/model/job"
 	"github.com/alceccentric/beck-crawler/scraper"
+	util "github.com/alceccentric/beck-crawler/util"
 	"github.com/rs/zerolog/log"
 )
 
@@ -36,6 +38,10 @@ func (orch *UserIdService) GetUserIdCollector(coldStartIntervalInDays int) func(
 		}()
 
 		in.UserIds = subjectUserScraper.CollectUids()
+
+		coolDownPeriodInSeconds := len(in.Subjects) * util.UserIdRetrieverCoolDownSecondsPerSubject
+		log.Info().Msgf("Retrieved %d subjects. Will sleep %d seconds.", len(in.Subjects), coolDownPeriodInSeconds)
+		time.Sleep(time.Duration(coolDownPeriodInSeconds) * time.Second)
 
 		return in, nil
 	}

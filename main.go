@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// Set log level
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	// Load env
 	err := godotenv.Load("beck_mizuki.env")
@@ -25,7 +25,7 @@ func main() {
 
 	// Start execution
 	orch := orch.NewColdStartOrchestrator(bgmClient, konomiAccessor)
-	orch.Run(1, 1, 1)
+	orch.Run(40, 1, 1)
 
 	// Clean up
 	konomiAccessor.Disconnect()

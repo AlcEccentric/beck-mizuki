@@ -25,26 +25,26 @@ func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao
 	}
 }
 
-func (orch *ColdStartOrchestrator) Run(numOfSubjectProducers, numOfUserProducers, numOfUserIdMergers int) {
+func (orch *ColdStartOrchestrator) Run(numOfSubjectRetrievers, numOfUserIdRetrievers, numOfUserIdMergers int) {
 	log.Info().
-		Int("numOfSubjectProducers", numOfSubjectProducers).
-		Int("numOfUserProducers", numOfUserProducers).
+		Int("numOfSubjectRetrievers", numOfSubjectRetrievers).
+		Int("numOfUserIdRetrievers", numOfUserIdRetrievers).
 		Int("numOfUserIdMergers", numOfUserIdMergers).
 		Msg("Start cold start orchestrator")
 
-	subjectProducerFn := orch.subjectSvc.GetSubjectProducer(numOfSubjectProducers)
-	userProducerFn := orch.userIdSvc.GetUserIdCollector(util.ColdStartIntervalInDays)
+	subjectRetrieverFn := orch.subjectSvc.GetSubjectRetriever(numOfSubjectRetrievers)
+	userIdRetrieverFn := orch.userIdSvc.GetUserIdCollector(util.ColdStartIntervalInDays)
 	userMergerFn, userIdSet := orch.userIdSvc.GetUserIdMerger()
 
-	subjectProducer := pipeline.NewProducer(
-		subjectProducerFn,
+	subjectRetriever := pipeline.NewProducer(
+		subjectRetrieverFn,
 		pipeline.Name("Retrieve subject data"),
 	)
 
-	userProducer := pipeline.NewStage(
-		userProducerFn,
+	userIdRetriever := pipeline.NewStage(
+		userIdRetrieverFn,
 		pipeline.Name("Retrieve users that comment on subjects"),
-		pipeline.Concurrency(uint(numOfUserProducers)),
+		pipeline.Concurrency(uint(numOfUserIdRetrievers)),
 	)
 
 	userMerger := pipeline.NewStage(
@@ -54,8 +54,8 @@ func (orch *ColdStartOrchestrator) Run(numOfSubjectProducers, numOfUserProducers
 	)
 
 	if err := pipeline.Do(
-		subjectProducer,
-		userProducer,
+		subjectRetriever,
+		userIdRetriever,
 		userMerger,
 	); err != nil {
 		log.Error().Err(err).Msg("Failed to run cold startpipeline")

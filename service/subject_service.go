@@ -1,6 +1,7 @@
 package service
 
 import (
+	"os"
 	"sync"
 	"time"
 
@@ -21,13 +22,13 @@ func NewSubjectService(bgmClient *dao.BgmApiAccessor) *SubjectService {
 	}
 }
 
-func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(put func(*job.ColdStartOrchJob)) error {
+func (svc *SubjectService) GetSubjectRetriever(numOfSubjectRetrievers int) func(put func(*job.ColdStartOrchJob)) error {
 	startDate, endDate := svc.getSubjectDateRange()
-	daysPerProduer := int(endDate.Sub(startDate).Hours()/24) / numOfSubjectProducers
+	daysPerProduer := int(endDate.Sub(startDate).Hours()/24) / numOfSubjectRetrievers
 
 	return func(put func(*job.ColdStartOrchJob)) error {
 		var wg sync.WaitGroup
-		for i := 0; i < numOfSubjectProducers; i++ {
+		for i := 0; i < numOfSubjectRetrievers; i++ {
 			index := i
 			wg.Add(1)
 			go func(index int) {
@@ -66,16 +67,18 @@ func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(pu
 }
 
 func (svc *SubjectService) getSubjectDateRange() (startDate time.Time, endDate time.Time) {
-	if sd, err := time.Parse(util.SubjectDateFormat, util.EarliestSubjectDate); err != nil {
-		log.Fatal().Err(err).Msgf("Error parsing earliest subject date %s", util.EarliestSubjectDate)
+	launchDateStr := os.Getenv("EARLIEST_SUBJECT_DATE")
+	if launchDateStr == "" {
+		log.Fatal().Msg("EARLIEST_SUBJECT_DATE environment variable is not set")
+	}
+
+	if sd, err := time.Parse(util.SubjectDateFormat, launchDateStr); err != nil {
+		log.Fatal().Err(err).Msgf("Error parsing earliest subject date %s", launchDateStr)
 	} else {
 		startDate = sd
 	}
 
-	if ed, err := time.Parse(util.SubjectDateFormat, util.LatestSubjectDate); err != nil {
-		log.Fatal().Err(err).Msgf("Error parsing latest subject date %s", util.LatestSubjectDate)
-	} else {
-		endDate = ed
-	}
+	endDate = time.Now()
+	log.Info().Msgf("Subject fetching start date: %s end date: %s", startDate, endDate)
 	return
 }

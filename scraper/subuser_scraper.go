@@ -40,7 +40,7 @@ func initColly() *colly.Collector {
 	collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
 		Parallelism: 1,
-		RandomDelay: time.Duration((randGen.Intn(3) + 2)) * time.Second,
+		RandomDelay: time.Duration((randGen.Intn(util.ScraperAdditionalDelayInS) + util.ScraperBaseDelayInS)) * time.Second,
 	})
 	return collector
 }

@@ -271,7 +271,7 @@ func (apiClient *BgmApiAccessor) post(request req.BgmPostRequest) (gjson.Result,
 }
 
 func (apiClient *BgmApiAccessor) randDelay() {
-	time.Sleep(time.Duration((apiClient.randGen.Intn(500) + 500)) * time.Millisecond)
+	time.Sleep(time.Duration((apiClient.randGen.Intn(util.APICallAdditionalDelayInMs) + util.APICallBaseDelayInMs)) * time.Millisecond)
 }
 
 func exceedMaxCollectionCnt(resp *resty.Response, respBody gjson.Result) bool {
