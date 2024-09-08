@@ -2,18 +2,19 @@ package util
 
 const (
 	// user/collection filter parameters
-	MinOldestCollectionAgeInDays = 365
-	T1CollectionCnt              = 400
-	T2CollectionCnt              = 800
-	T3CollectionCnt              = 1200
-	ActivityCheckDays            = 180
-	T1IntervalDays               = 10
-	T2IntervalDays               = 20
-	T3IntervalDays               = 30
-	InActiveIntervalTolerance    = 3
-	MinFilteredCollectionCnt     = 300
-	SubjectMinCollectionCnt      = 100
-	MaxWatchedAnimeCount         = 3000
+	MinOldestWatchedAgeInDays   = 365
+	T1WatchedCnt                = 400
+	T2WatchedCnt                = 800
+	T3WatchedCnt                = 1200
+	MinWatchingCnt              = 10
+	ActivityCheckDays           = 90
+	T1IntervalDays              = 10
+	T2IntervalDays              = 20
+	T3IntervalDays              = 30
+	NonWatchedIntervalTolerance = 3
+	MinFilteredWatchedCnt       = 300
+	SubjectMinCollectionCnt     = 100
+	MaxWatchedAnimeCount        = 3000
 
 	// various data format
 	SubjectDateFormat           = "2006-01-02"

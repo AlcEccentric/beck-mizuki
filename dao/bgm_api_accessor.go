@@ -241,7 +241,7 @@ func (apiClient *BgmApiAccessor) GetCollectionTime(uid string, offset int) (time
 }
 
 func (apiClient *BgmApiAccessor) get(request req.BgmGetRequest) (gjson.Result, *resty.Response, error) {
-	time.Sleep(time.Duration((apiClient.randGen.Intn(100) + 100)) * time.Millisecond)
+	apiClient.randDelay()
 	resp, err := apiClient.httpClient.R().EnableTrace().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", "alceccentric/beck-crawler").
@@ -254,7 +254,7 @@ func (apiClient *BgmApiAccessor) get(request req.BgmGetRequest) (gjson.Result, *
 }
 
 func (apiClient *BgmApiAccessor) post(request req.BgmPostRequest) (gjson.Result, *resty.Response, error) {
-	time.Sleep(time.Duration((apiClient.randGen.Intn(100) + 100)) * time.Millisecond)
+	apiClient.randDelay()
 	resp, err := apiClient.httpClient.R().EnableTrace().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", "alceccentric/beck-crawler").
@@ -265,6 +265,10 @@ func (apiClient *BgmApiAccessor) post(request req.BgmPostRequest) (gjson.Result,
 	}
 
 	return gjson.ParseBytes(resp.Body()), resp, nil
+}
+
+func (apiClient *BgmApiAccessor) randDelay() {
+	time.Sleep(time.Duration((apiClient.randGen.Intn(500) + 500)) * time.Millisecond)
 }
 
 func exceedMaxCollectionCnt(resp *resty.Response, respBody gjson.Result) bool {

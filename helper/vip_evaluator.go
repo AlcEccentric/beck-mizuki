@@ -10,13 +10,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Reject users with less than 400 raw collections
-// Reject users whose oldest collection was made in the last 12 months
-// For users with more than 400 but less than 800 collections, require them to have at least 1 collection every 15 days in the past half year
-// For users with more than 800 but less than 1200 collections, require them to have at least 1 collection every 30 days in the past half year
-// For users with more than 1200 collections, require them to have at least 1 collection every 45 days in the past half year
-// For each user, up to 2 periods are allowed without a collection
-// Reject users with less than 300 filtered collections
+// Reject users with watched count less than T1WatchedCnt
+// Reject users whose oldest watched collection was made more than last MinOldestWatchedAgeInDays days ago
+// For users with watched count in [T1WatchedCnt, T2WatchedCnt), they should have at least 1 watched every T1IntervalDays in the past ActivityCheckDays
+// For users with watched count in [T2WatchedCnt, T3WatchedCnt), they should have at least 1 watched every T2IntervalDays in the past ActivityCheckDays
+// For users with watched count in [T3WatchedCnt, inf), they should have at least 1 collection every T3IntervalDays in the past ActivityCheckDays
+// If user does not meet the criteria for watched, they should have at least MinWatchingCnt in the past ActivityCheckDays
+// For each user, up to NonWatchedIntervalTolerance periods are allowed without a collection
+// Reject users with less than MinFilteredWatchedCnt collections
 
 var tagsToReject = map[string]struct{}{
 	"国产":   {},
@@ -32,34 +33,34 @@ var tagsToReject = map[string]struct{}{
 }
 
 func IsVip(uid string, bgmAPI *dao.BgmApiAccessor) (bool, []model.Collection) {
-	// raw collection count filter
-	rawCollectionCount, err := bgmAPI.GetCollectionCount(uid, model.Watched, model.Anime)
+	// raw watched collection count filter
+	rawWatchedCount, err := bgmAPI.GetCollectionCount(uid, model.Watched, model.Anime)
 
 	if err != nil {
 		fmt.Println(err)
 		return false, nil
 	}
 
-	if rawCollectionCount < util.T1CollectionCnt {
-		fmt.Println(fmt.Errorf("user: %s raw collection count was under %d", uid, util.T1CollectionCnt))
+	if rawWatchedCount < util.T1WatchedCnt {
+		fmt.Println(fmt.Errorf("user: %s raw collection count was under %d", uid, util.T1WatchedCnt))
 		return false, nil
 	}
 
 	// oldest collection filter
-	earliestCollectionTime, err := bgmAPI.GetCollectionTime(uid, rawCollectionCount-1)
+	earliestWatchedTime, err := bgmAPI.GetCollectionTime(uid, rawWatchedCount-1)
 
 	if err != nil {
 		fmt.Println(err)
 		return false, nil
 	}
 
-	if time.Since(earliestCollectionTime) < time.Hour*24*util.MinOldestCollectionAgeInDays {
-		fmt.Println(fmt.Errorf("user: %s earliest collection time was under %d days from today", uid, util.MinOldestCollectionAgeInDays))
+	if time.Since(earliestWatchedTime) < time.Hour*24*util.MinOldestWatchedAgeInDays {
+		fmt.Println(fmt.Errorf("user: %s earliest watched collection time was under %d days from today", uid, util.MinOldestWatchedAgeInDays))
 		return false, nil
 	}
 
 	// leveled activity check
-	colletionsInPastHalfYear, err := bgmAPI.GetRecentCollections(uid, model.Watched, model.Anime, animeFilter, util.ActivityCheckDays)
+	watched, err := bgmAPI.GetRecentCollections(uid, model.Watched, model.Anime, animeFilter, util.ActivityCheckDays)
 
 	if err != nil {
 		fmt.Println(err)
@@ -67,37 +68,38 @@ func IsVip(uid string, bgmAPI *dao.BgmApiAccessor) (bool, []model.Collection) {
 	}
 
 	active := true
-	if rawCollectionCount < util.T2CollectionCnt {
-		active = isActive(colletionsInPastHalfYear, util.T1IntervalDays)
-	} else if rawCollectionCount < util.T3CollectionCnt {
-		active = isActive(colletionsInPastHalfYear, util.T2IntervalDays)
+	if rawWatchedCount < util.T2WatchedCnt {
+		active = isActiveWatched(watched, util.T1IntervalDays) || isActiveWatching(bgmAPI, uid)
+	} else if rawWatchedCount < util.T3WatchedCnt {
+		active = isActiveWatched(watched, util.T2IntervalDays) || isActiveWatching(bgmAPI, uid)
 	} else {
-		active = isActive(colletionsInPastHalfYear, util.T3IntervalDays)
+		active = isActiveWatched(watched, util.T3IntervalDays) || isActiveWatching(bgmAPI, uid)
 	}
 
 	if !active {
-		fmt.Printf("user: %s with %d raw collections is not active\n", uid, rawCollectionCount)
+		fmt.Printf("user: %s with is not considered active\n", uid)
 		return false, nil
 	}
 
-	// filtered collection count check
-	filteredCollections, err := bgmAPI.GetCollections(uid, model.Watched, model.Anime, animeFilter)
+	// filtered watched count check
+	filteredWatched, err := bgmAPI.GetCollections(uid, model.Watched, model.Anime, animeFilter)
 	if err != nil {
 		fmt.Println(err)
 		return false, nil
 	}
 
-	if len(filteredCollections) < util.MinFilteredCollectionCnt {
-		fmt.Printf("user: %s with %d filtered collections is under %d\n", uid, len(filteredCollections), util.MinFilteredCollectionCnt)
+	if len(filteredWatched) < util.MinFilteredWatchedCnt {
+		fmt.Printf("user: %s with %d filtered watched collections is under %d\n", uid, len(filteredWatched), util.MinFilteredWatchedCnt)
 		return false, nil
 	}
 
-	return true, filteredCollections
+	// Return filtered watched to reduce the number of API calls
+	return true, filteredWatched
 }
 
-func isActive(collections []model.Collection, intervalDays int) bool {
+func isActiveWatched(collections []model.Collection, intervalDays int) bool {
 	lastIntervalIdx := -1
-	toleranceCounter := util.InActiveIntervalTolerance
+	toleranceCounter := util.NonWatchedIntervalTolerance
 	for i := 0; i < len(collections); i++ {
 		collectionTime, err := time.Parse(util.CollectionTimeFormat, collections[i].CollectedTime)
 		if err != nil {
@@ -113,6 +115,17 @@ func isActive(collections []model.Collection, intervalDays int) bool {
 		lastIntervalIdx = curIntervalIdx
 	}
 	return true
+}
+
+func isActiveWatching(bgmAPI *dao.BgmApiAccessor, uid string) bool {
+	watching, err := bgmAPI.GetRecentCollections(uid, model.Watching, model.Anime, animeFilter, util.ActivityCheckDays)
+
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	return len(watching) >= util.MinWatchingCnt
 }
 
 func animeFilter(animeCol gjson.Result) bool {
