@@ -17,3 +17,16 @@ type Subject struct {
 	Name      string
 	AvgRating float32
 }
+
+func (st SubjectType) String() string {
+	switch st {
+	case Manga:
+		return "Manga"
+	case Anime:
+		return "Anime"
+	case Game:
+		return "Game"
+	default:
+		return "Unknown"
+	}
+}

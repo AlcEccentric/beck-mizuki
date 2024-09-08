@@ -7,7 +7,7 @@ const (
 	T2WatchedCnt                = 800
 	T3WatchedCnt                = 1200
 	MinWatchingCnt              = 10
-	ActivityCheckDays           = 90
+	ActivityCheckDays           = 90 // Better to be the same as CollectionCheckDays
 	T1IntervalDays              = 10
 	T2IntervalDays              = 20
 	T3IntervalDays              = 30
@@ -18,6 +18,7 @@ const (
 
 	// various data format
 	SubjectDateFormat           = "2006-01-02"
+	LaunchDateFormat            = "2006-01-02"
 	CollectionTimeFormat        = "2006-01-02T15:04:05-07:00"
 	WebsiteCollectionTimeFormat = "2006-1-2 15:04"
 
@@ -35,5 +36,6 @@ const (
 	LatestSubjectDate   = "2022-01-10"
 
 	// Orchestration parameters
-	ColdStartIntervalInDays = 7
+	ColdStartIntervalInDays     = 90
+	RegularUpdateIntervalInDays = 30
 )

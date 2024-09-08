@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 	model "github.com/alceccentric/beck-crawler/model"
 	job "github.com/alceccentric/beck-crawler/model/job"
 	util "github.com/alceccentric/beck-crawler/util"
+	"github.com/rs/zerolog/log"
 )
 
 type SubjectService struct {
@@ -35,6 +35,8 @@ func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(pu
 				curStartDate := startDate.Add(time.Duration(index*daysPerProduer) * 24 * time.Hour)
 				curEndDate := curStartDate.Add(time.Duration(daysPerProduer) * 24 * time.Hour)
 
+				log.Info().Msgf("Trying to get subjects released between curStartDate: %s and curEndDate: %s", curStartDate, curEndDate)
+
 				if curEndDate.After(endDate) {
 					curEndDate = endDate
 				}
@@ -47,13 +49,15 @@ func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(pu
 				)
 
 				if err == nil {
+					log.Info().Msgf("Got %d subjects between curStartDate: %s and curEndDate: %s", len(subjects), curStartDate, curEndDate)
 					j := &job.ColdStartOrchJob{
 						Subjects: subjects,
 					}
 					put(j)
 				} else {
-					fmt.Printf("Error getting subjects: %v with curStartDate: %s and curEndDate: %s. Skipping...", err, curStartDate, curEndDate)
+					log.Error().Msgf("Error getting subjects: %v. curStartDate: %s and curEndDate: %s. Skipping...", err, curStartDate, curEndDate)
 				}
+
 			}(index)
 		}
 		wg.Wait()
@@ -63,13 +67,13 @@ func (svc *SubjectService) GetSubjectProducer(numOfSubjectProducers int) func(pu
 
 func (svc *SubjectService) getSubjectDateRange() (startDate time.Time, endDate time.Time) {
 	if sd, err := time.Parse(util.SubjectDateFormat, util.EarliestSubjectDate); err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msgf("Error parsing earliest subject date %s", util.EarliestSubjectDate)
 	} else {
 		startDate = sd
 	}
 
 	if ed, err := time.Parse(util.SubjectDateFormat, util.LatestSubjectDate); err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msgf("Error parsing latest subject date %s", util.LatestSubjectDate)
 	} else {
 		endDate = ed
 	}

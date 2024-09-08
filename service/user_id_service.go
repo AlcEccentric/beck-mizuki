@@ -6,6 +6,7 @@ import (
 	model "github.com/alceccentric/beck-crawler/model"
 	orchJob "github.com/alceccentric/beck-crawler/model/job"
 	"github.com/alceccentric/beck-crawler/scraper"
+	"github.com/rs/zerolog/log"
 )
 
 type UserIdService struct {
@@ -17,6 +18,7 @@ func NewUserIdService() *UserIdService {
 
 func (orch *UserIdService) GetUserIdCollector(coldStartIntervalInDays int) func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
 	return func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
+		log.Info().Msgf("Retrieving ids for users who completed some works in the last %d days for %d subjects", coldStartIntervalInDays, len(in.Subjects))
 		subjectUserScraper := scraper.NewSubjectUserScraper(coldStartIntervalInDays, len(in.Subjects))
 
 		var wg sync.WaitGroup
@@ -43,6 +45,7 @@ func (orch *UserIdService) GetUserIdMerger() (func(in *orchJob.ColdStartOrchJob)
 	userIdSet := make(map[string]struct{})
 
 	userMergerFn := func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
+		log.Info().Msgf("Merging fetched user ids into one list (only keep unique user ids)")
 		for _, userId := range in.UserIds {
 			userIdSet[userId] = struct{}{}
 		}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/alceccentric/beck-crawler/util"
 	"github.com/gocolly/colly"
+	"github.com/rs/zerolog/log"
 )
 
 type SubjectUserScraper struct {
@@ -74,16 +75,16 @@ func (scraper *SubjectUserScraper) registerHandler() {
 }
 
 func (scraper *SubjectUserScraper) handleMainWrapper(page *colly.HTMLElement) {
+	log.Debug().Msgf("SubjectUserScraper processing page %s", page.Request.URL.String())
 	maxIndex, err := scraper.getMaxIndex(page)
-	fmt.Printf("Processing page %s\n", page.Request.URL.String())
 	if err != nil {
-		fmt.Println("Failed to get max index:", err)
+		log.Error().Err(err).Msgf("Failed to get max index. Skipping %s", page.Request.URL.String())
 		return
 	}
 
 	sid := page.Request.Ctx.Get("subjectId")
 	if sid == "" {
-		fmt.Println("No subject id in context")
+		log.Error().Err(err).Msgf("Subject id not found in context. Skipping %s", page.Request.URL.String())
 		return
 	}
 
@@ -91,7 +92,7 @@ func (scraper *SubjectUserScraper) handleMainWrapper(page *colly.HTMLElement) {
 	if !beyondTimeHorizon {
 		scraper.checkAndVisitNextPage(page, sid, maxIndex)
 	} else {
-		// fmt.Printf("Wont check next page and stop at %s\n", page.Request.URL.String())
+		log.Debug().Msgf("Wont check next page and stop at %s", page.Request.URL.String())
 	}
 }
 
@@ -102,13 +103,14 @@ func (scraper *SubjectUserScraper) processUserCollections(page *colly.HTMLElemen
 		collectionTime, err := scraper.getCollectionTime(col)
 
 		if err != nil {
-			fmt.Println("Failed to get collection time for uid:", uid, "for subject id:", sid, "with err:", err)
+			log.Error().Err(err).Msgf("Failed to get collection time for uid: %s when visiting %s. Skipping...", uid, page.Request.URL.String())
 			return true // skip this and continue
 		}
 
 		if scraper.isBeyondTimeHorizon(collectionTime) {
+			log.Debug().Msgf("Collection time %s for uid: %s for subject id: %s is beyond time horizon. Stop looking further", collectionTime, uid, sid)
 			beyondTimeHorizon = true
-			return false // stop processing
+			return false
 		} else {
 			scraper.uidChan <- uid
 			return true // skip this and continue
@@ -120,14 +122,14 @@ func (scraper *SubjectUserScraper) processUserCollections(page *colly.HTMLElemen
 func (scraper *SubjectUserScraper) checkAndVisitNextPage(page *colly.HTMLElement, sid string, maxIndex int) {
 	curIndex, err := scraper.getCurIndex(page)
 	if err != nil {
-		fmt.Printf("Error getting current index: %v\n", err)
+		log.Error().Err(err).Msgf("Failed to get current index. Skipping %s", page.Request.URL.String())
 		return
 	}
 
 	if curIndex < maxIndex {
-		page.Request.Ctx.Put("maxIndex", strconv.Itoa(maxIndex))
-		fmt.Printf("Going to visit subject id: %s, index: %d\n", sid, curIndex+1)
-		page.Request.Visit(fmt.Sprintf(util.SubjectCollectionUrlFormat, sid, curIndex+1))
+		nextPageAddr := fmt.Sprintf(util.SubjectCollectionUrlFormat, sid, curIndex+1)
+		log.Debug().Msgf("Visiting next page %s", nextPageAddr)
+		page.Request.Visit(nextPageAddr)
 	}
 }
 
@@ -138,33 +140,18 @@ func (scraper *SubjectUserScraper) isBeyondTimeHorizon(inTime time.Time) bool {
 func (scraper *SubjectUserScraper) getCollectionTime(collection *colly.HTMLElement) (time.Time, error) {
 	pInfoContent := collection.ChildText("p.info")
 	if parsedTime, err := time.Parse(util.WebsiteCollectionTimeFormat, replaceNonASCIIWithSpaces(pInfoContent)); err != nil {
-		return time.Now(), fmt.Errorf("invalid collection time: %s error: %s", pInfoContent, err)
+		return time.Now(), fmt.Errorf("invalid collection time: %s error: %s when scraping user id from subject page", pInfoContent, err)
 	} else {
 		return parsedTime, nil
 	}
 }
 
 func (scraper *SubjectUserScraper) getCurIndex(page *colly.HTMLElement) (int, error) {
-	if curIndex := page.Request.Ctx.Get("curIndex"); curIndex != "" {
-		if ci, err := strconv.Atoi(curIndex); err != nil {
-			return 0, fmt.Errorf("invalid curIndex: %s  error: %s", curIndex, err)
-		} else {
-			return ci, nil
-		}
-	} else {
-		return 1, nil
-	}
+	curIndexStr := page.Request.URL.Query().Get("page")
+	return strconv.Atoi(curIndexStr)
 }
 
 func (scraper *SubjectUserScraper) getMaxIndex(page *colly.HTMLElement) (int, error) {
-	if maxIndex := page.Request.Ctx.Get("maxIndex"); maxIndex != "" {
-		if mi, err := strconv.Atoi(maxIndex); err != nil {
-			return 0, fmt.Errorf("invalid maxIndex in context: %s  error: %s", maxIndex, err)
-		} else {
-			return mi, nil
-		}
-	}
-
 	pEdgeContent := replaceNonASCIIWithSpaces(page.ChildText("span.p_edge"))
 
 	// When p_edge is empty, it means the # of pages is limited
@@ -177,7 +164,7 @@ func (scraper *SubjectUserScraper) getMaxIndex(page *colly.HTMLElement) (int, er
 			}
 
 			if anchorIndex, err := strconv.Atoi(pageAnchor.Text); err != nil {
-				fmt.Printf("failed to parse anchor index: %s\n", pageAnchor.Text)
+				log.Error().Err(err).Msgf("Invalid page anchor: %s when scraping user id from subject page. Ignoring...", pageAnchor.Text)
 			} else {
 				if anchorIndex > maxIndex {
 					maxIndex = anchorIndex
@@ -187,7 +174,7 @@ func (scraper *SubjectUserScraper) getMaxIndex(page *colly.HTMLElement) (int, er
 		return maxIndex, nil
 	} else {
 		if maxIndex, err := strconv.Atoi(strings.Trim(strings.Split(pEdgeContent, "/")[1], " )")); err != nil {
-			return 0, fmt.Errorf("invalid p_edge: %s  error: %s", pEdgeContent, err)
+			return 0, fmt.Errorf("invalid p_edge: %s error: %s when scraping user id from subject page", pEdgeContent, err)
 		} else {
 			return maxIndex, nil
 		}

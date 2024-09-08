@@ -12,6 +12,7 @@ import (
 	req "github.com/alceccentric/beck-crawler/model/request"
 	util "github.com/alceccentric/beck-crawler/util"
 	"github.com/go-resty/resty/v2"
+	"github.com/rs/zerolog/log"
 	"github.com/tidwall/gjson"
 )
 
@@ -31,7 +32,7 @@ func (apiClient *BgmApiAccessor) GetSubjects(tags []string, types []model.Subjec
 	offset := 0
 	subjects := make([]model.Subject, 0)
 	for {
-		// fmt.Printf("Sending get subjects request with time range %s and offset %d\n", airDateRange, offset)
+		log.Debug().Msgf("Sending get subjects request with time range %s [offset %d]", airDateRange, offset)
 		respBody, resp, err := apiClient.post(&req.SearchSubjectPagedRequest{
 			Tags:         tags,
 			Types:        types,
@@ -45,7 +46,7 @@ func (apiClient *BgmApiAccessor) GetSubjects(tags []string, types []model.Subjec
 			return nil, err
 		}
 		if resp.IsError() {
-			return nil, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+			return nil, fmt.Errorf("SearchSubjectPagedRequest failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 		}
 
 		subjectResults := respBody.Get("data").Array()
@@ -66,19 +67,19 @@ func (apiClient *BgmApiAccessor) GetSubjects(tags []string, types []model.Subjec
 }
 
 func (apiClient *BgmApiAccessor) GetUser(uid string) (model.User, error) {
-	// fmt.Printf("Sending get user request\n")
+	log.Debug().Msgf("Sending get user request with uid %s", uid)
 	getUserResult, resp, getUserErr := apiClient.get(&req.GetUserRequest{
 		Uid: uid,
 	})
-	// index 0 points to the latest collection
-	latestCollectionTime, getLatestCollectionErr := apiClient.GetCollectionTime(uid, 0)
+
+	latestCollectionTime, getLatestCollectionErr := apiClient.GetCollectionTime(uid, 0, model.Watched, model.Anime)
 
 	if getUserErr != nil {
 		return model.User{}, getUserErr
 	} else if getLatestCollectionErr != nil {
 		return model.User{}, getLatestCollectionErr
 	} else if resp.StatusCode() != 200 {
-		return model.User{}, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+		return model.User{}, fmt.Errorf("GetUserRequest failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 	} else {
 		return model.User{
 			ID:             uid,
@@ -92,9 +93,11 @@ func (apiClient *BgmApiAccessor) GetUser(uid string) (model.User, error) {
 func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.CollectionType, stype model.SubjectType, collectionAcceptor func(gjson.Result) bool) ([]model.Collection, error) {
 	offset := 0
 	collections := make([]model.Collection, 0)
+	log.Debug().Msgf("Sending get collection request with uid %s, ctype %s, stype %s", uid, ctype.String(), stype.String())
 	for {
 		originalColCnt := len(collections)
 		var err error
+		log.Debug().Msgf("Sending get collection request with uid %s, ctype %s, stype %s [offset %d]", uid, ctype.String(), stype.String(), offset)
 		collections, err = apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
@@ -122,9 +125,11 @@ func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
 	recentWindowInDays int) ([]model.Collection, error) {
 	offset := 0
 	collections := make([]model.Collection, 0)
+	log.Debug().Msgf("Sending get recent collection request with uid %s, ctype %s, stype %s, recentWindowInDays %d", uid, ctype.String(), stype.String(), recentWindowInDays)
 	for {
 		originalColCnt := len(collections)
 		var fetchErr error
+		log.Debug().Msgf("Sending get collection request with uid %s, ctype %s, stype %s, recentWindowInDays %d [offset %d]", uid, ctype.String(), stype.String(), recentWindowInDays, offset)
 		collections, fetchErr = apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
@@ -156,15 +161,13 @@ func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
 func (apiClient *BgmApiAccessor) addCollections(getPagedCollectionReq *req.GetPagedUserCollectionsRequest,
 	collectionAcceptor func(gjson.Result) bool,
 	collections []model.Collection) ([]model.Collection, error) {
-
-	// fmt.Printf("Sending get collections request\n")
 	respBody, resp, err := apiClient.get(getPagedCollectionReq)
 	if err != nil {
 		return collections, err
 	} else if exceedMaxCollectionCnt(resp, respBody) {
 		return collections, nil
 	} else if !resp.IsSuccess() {
-		return collections, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+		return collections, fmt.Errorf("GetPagedUserCollectionsRequest failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 	}
 
 	collectionResults := respBody.Get("data").Array()
@@ -192,7 +195,7 @@ func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.Coll
 		Offset:         util.MaxWatchedAnimeCount,
 	}
 
-	// fmt.Printf("Sending get collection count request\n")
+	log.Debug().Msgf("Sending get collection count request with uid %s, ctype %s, stype %s", uid, ctype.String(), stype.String())
 	respBody, resp, err := apiClient.get(request)
 
 	if err != nil {
@@ -214,27 +217,27 @@ func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.Coll
 			return 0, fmt.Errorf("not able to find collection count from message %s", respBody.Get("description").String())
 		}
 	} else {
-		return 0, fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+		return 0, fmt.Errorf("GetPagedUserCollectionsRequest failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 	}
 }
 
-func (apiClient *BgmApiAccessor) GetCollectionTime(uid string, offset int) (time.Time, error) {
+func (apiClient *BgmApiAccessor) GetCollectionTime(uid string, offset int, ctype model.CollectionType, stype model.SubjectType) (time.Time, error) {
 	getLatestCollectionRequest := &req.GetPagedUserCollectionsRequest{
 		Uid:            uid,
-		CollectionType: model.Watched,
-		SubjectType:    model.Anime,
+		CollectionType: ctype,
+		SubjectType:    stype,
 		Limit:          1,
 		Offset:         offset,
 	}
 
-	// fmt.Printf("Sending get latest collection request\n")
+	log.Debug().Msgf("Sending get collection time request with uid %s, offset %d", uid, offset)
 	respBody, resp, err := apiClient.get(getLatestCollectionRequest)
 	if err != nil {
 		return time.Now(), err
 	}
 
 	if resp.IsError() {
-		return time.Now(), fmt.Errorf("request failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+		return time.Now(), fmt.Errorf("GetPagedUserCollectionsRequest failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 	}
 
 	return respBody.Get("data").Array()[0].Get("updated_at").Time(), nil

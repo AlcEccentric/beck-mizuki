@@ -1,9 +1,8 @@
 package orch
 
 import (
-	"fmt"
-
 	"github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/rs/zerolog/log"
 
 	dao "github.com/alceccentric/beck-crawler/dao"
 	"github.com/alceccentric/beck-crawler/service"
@@ -27,6 +26,12 @@ func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao
 }
 
 func (orch *ColdStartOrchestrator) Run(numOfSubjectProducers, numOfUserProducers, numOfUserIdMergers int) {
+	log.Info().
+		Int("numOfSubjectProducers", numOfSubjectProducers).
+		Int("numOfUserProducers", numOfUserProducers).
+		Int("numOfUserIdMergers", numOfUserIdMergers).
+		Msg("Start cold start orchestrator")
+
 	subjectProducerFn := orch.subjectSvc.GetSubjectProducer(numOfSubjectProducers)
 	userProducerFn := orch.userIdSvc.GetUserIdCollector(util.ColdStartIntervalInDays)
 	userMergerFn, userIdSet := orch.userIdSvc.GetUserIdMerger()
@@ -44,7 +49,7 @@ func (orch *ColdStartOrchestrator) Run(numOfSubjectProducers, numOfUserProducers
 
 	userMerger := pipeline.NewStage(
 		userMergerFn,
-		pipeline.Name("User collection data persistion"),
+		pipeline.Name("Merge fetched user ids into one list (only keep unique user ids)"),
 		pipeline.Concurrency(uint(numOfUserIdMergers)),
 	)
 
@@ -53,9 +58,9 @@ func (orch *ColdStartOrchestrator) Run(numOfSubjectProducers, numOfUserProducers
 		userProducer,
 		userMerger,
 	); err != nil {
-		fmt.Printf("Do() failed: %s", err)
+		log.Error().Err(err).Msg("Failed to run cold startpipeline")
 	} else {
-		fmt.Printf("Received %d users\n", len(userIdSet))
+		log.Info().Msgf("Fetched %d user ids", len(userIdSet))
 		userIds := make([]string, 0, len(userIdSet))
 		for uid := range userIdSet {
 			userIds = append(userIds, uid)

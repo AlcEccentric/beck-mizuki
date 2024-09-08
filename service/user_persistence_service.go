@@ -6,6 +6,7 @@ import (
 	dao "github.com/alceccentric/beck-crawler/dao"
 	"github.com/alceccentric/beck-crawler/helper"
 	model "github.com/alceccentric/beck-crawler/model"
+	"github.com/rs/zerolog/log"
 )
 
 type UserPersistenceService struct {
@@ -21,33 +22,35 @@ func NewUserPersistenceService(bgmClinet *dao.BgmApiAccessor, konomiAccessor *da
 }
 
 func (svc *UserPersistenceService) Persist(uids []string) error {
+	log.Info().Msgf("Trying to persist %d users", len(uids))
+	persistedUserCnt := 0
 	for _, uid := range uids {
 		// check if user meets criteria:
-		isVIP, collections := helper.IsVip(uid, svc.bgmClient)
+		isVIP, watchedCollections := helper.IsVip(uid, svc.bgmClient)
 		if !isVIP {
 			continue
 		}
 
-		// get user
-		fmt.Printf("Found %d collections for user: %s\n", len(collections), uid)
+		log.Info().Msgf("Found %d watched collections for user: %s", len(watchedCollections), uid)
 		user, err := svc.getUser(uid)
 		if err != nil {
-			fmt.Println(fmt.Errorf("failed to get user: %s (%w)", uid, err))
+			log.Error().Err(err).Msgf("Failed to get user: %s. Skipping...", uid)
 			continue
 		}
 
-		// insert user into db
 		svc.konomiAccessor.InsertUser(user)
-		for _, collection := range collections {
-			// insert collection into db
+		for _, collection := range watchedCollections {
 			svc.konomiAccessor.InsertCollection(collection)
 		}
+		log.Info().Msgf("Successfully persisted user: %s", uid)
+		persistedUserCnt++
 	}
+	log.Info().Msgf("At the end, persisted %d users", persistedUserCnt)
 	return nil
 }
 
 func (svc *UserPersistenceService) getUser(uid string) (model.User, error) {
-	latestCollectionTime, err := svc.bgmClient.GetCollectionTime(uid, 0)
+	latestCollectionTime, err := svc.bgmClient.GetCollectionTime(uid, 0, model.Watched, model.Anime)
 	if err != nil {
 		return model.User{}, fmt.Errorf("failed to get latest collection time for user: %s (%w)", uid, err)
 	}
