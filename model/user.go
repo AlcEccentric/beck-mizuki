@@ -1,9 +1,9 @@
 package model
 
-import "time"
+import (
+	"time"
 
-const (
-	crUserTable = "bgm_user"
+	jetmodel "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/model"
 )
 
 type User struct {
@@ -13,7 +13,12 @@ type User struct {
 	LastActiveTime time.Time `bson:"last_active_time" gorm:"column:last_active_time"`
 }
 
-// It's for gorm to identify the target table
-func (User) TableName() string {
-	return crUserTable
+// convert to jet generated model
+func (u *User) ToBgmUser() jetmodel.BgmUser {
+	return jetmodel.BgmUser{
+		ID:             u.ID,
+		Nickname:       &u.Nickname,
+		AvatarURL:      &u.AvatarURL,
+		LastActiveTime: &u.LastActiveTime,
+	}
 }

@@ -1,13 +1,16 @@
 package dao
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
-	model "github.com/alceccentric/beck-crawler/model"
+	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+
+	"github.com/alceccentric/beck-crawler/model"
+	. "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/table"
 )
 
 const (
@@ -16,7 +19,7 @@ const (
 )
 
 type KonomiCRAccessor struct {
-	db *gorm.DB
+	db *sql.DB
 }
 
 func NewCRKonomiAccessor() *KonomiCRAccessor {
@@ -25,7 +28,7 @@ func NewCRKonomiAccessor() *KonomiCRAccessor {
 
 	dsn := fmt.Sprintf("postgresql://%s:%s@%s-11815.6wr.aws-us-west-2.cockroachlabs.cloud:26257/%s?sslmode=verify-full",
 		userId, password, crCluster, crDatabase)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to cockroachdb")
 	}
@@ -35,21 +38,37 @@ func NewCRKonomiAccessor() *KonomiCRAccessor {
 }
 
 func (accessor *KonomiCRAccessor) Disconnect() {
-	// not needed for gorm connection
+	accessor.db.Close()
 }
 
 func (accessor *KonomiCRAccessor) InsertUser(user model.User) error {
-	err := accessor.db.Create(&user)
-	if err.Error != nil {
-		return err.Error
+	stmt := BgmUser.INSERT(BgmUser.ID, BgmUser.Nickname, BgmUser.AvatarURL, BgmUser.LastActiveTime).
+		MODEL(user.ToBgmUser()).
+		ON_CONFLICT(BgmUser.ID).DO_NOTHING()
+
+	start := time.Now()
+	_, err := stmt.Exec(accessor.db)
+	fmt.Printf("Insert user took %s\n", time.Since(start))
+
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
 func (accessor *KonomiCRAccessor) InsertCollection(collection model.Collection) error {
-	err := accessor.db.Create(&collection)
-	if err.Error != nil {
-		return err.Error
+	stmt := BgmUserCollection.INSERT(BgmUserCollection.UserID, BgmUserCollection.SubjectID,
+		BgmUserCollection.SubjectType, BgmUserCollection.CollectionType,
+		BgmUserCollection.CollectedTime, BgmUserCollection.Rating).
+		MODEL(collection.ToBgmUserCollection()).
+		ON_CONFLICT(BgmUserCollection.UserID, BgmUserCollection.SubjectID).DO_NOTHING()
+
+	start := time.Now()
+	_, err := stmt.Exec(accessor.db)
+	fmt.Printf("Insert collection took %s\n", time.Since(start))
+
+	if err != nil {
+		return err
 	}
 	return nil
 }

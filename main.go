@@ -23,11 +23,9 @@ func main() {
 	// Create dependencies (TODO: adopt DI if # of dependencies exceeds 3)
 	bgmClient := dao.NewBgmApiAccessor()
 	konomiAccessor := dao.NewCRKonomiAccessor()
+	defer konomiAccessor.Disconnect()
 
 	// Start execution
 	orch := orch.NewColdStartOrchestrator(bgmClient, konomiAccessor)
 	orch.Run(util.NumOfSubjectRetrievers, util.NumOfUserIdRetrievers, util.NumOfUserIdMergers)
-
-	// Clean up
-	konomiAccessor.Disconnect()
 }

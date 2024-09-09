@@ -179,11 +179,11 @@ func (apiClient *BgmApiAccessor) addCollections(getPagedCollectionReq *req.GetPa
 
 			collections = append(collections, model.Collection{
 				UserID:         getPagedCollectionReq.Uid,
-				SubjectType:    int(getPagedCollectionReq.SubjectType),
+				SubjectType:    int64(getPagedCollectionReq.SubjectType),
 				SubjectID:      collectionResult.Get("subject_id").String(),
-				CollectionType: int(getPagedCollectionReq.CollectionType),
+				CollectionType: int64(getPagedCollectionReq.CollectionType),
 				CollectedTime:  collectedTime,
-				Rating:         int(collectionResult.Get("rate").Int()),
+				Rating:         int64(collectionResult.Get("rate").Int()),
 			})
 		}
 	}

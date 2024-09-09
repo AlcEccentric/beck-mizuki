@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	jetmodel "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/model"
+)
 
 type CollectionType int
 
@@ -30,20 +34,22 @@ func (ct CollectionType) String() string {
 	}
 }
 
-const (
-	crCollectionTable = "bgm_user_collection"
-)
-
 type Collection struct {
 	UserID         string    `bson:"user_id" gorm:"column:user_id"`
 	SubjectID      string    `bson:"subject_id" gorm:"column:subject_id"`
-	SubjectType    int       `bson:"subject_type" gorm:"column:subject_type"`
-	CollectionType int       `bson:"collection_type" gorm:"column:collection_type"`
+	SubjectType    int64     `bson:"subject_type" gorm:"column:subject_type"`
+	CollectionType int64     `bson:"collection_type" gorm:"column:collection_type"`
 	CollectedTime  time.Time `bson:"collected_time" gorm:"column:collected_time"`
-	Rating         int       `bson:"rating,omitempty" gorm:"column:rating"`
+	Rating         int64     `bson:"rating,omitempty" gorm:"column:rating"`
 }
 
-// It's for gorm to identify the target table
-func (Collection) TableName() string {
-	return crCollectionTable
+func (c *Collection) ToBgmUserCollection() jetmodel.BgmUserCollection {
+	return jetmodel.BgmUserCollection{
+		UserID:         c.UserID,
+		SubjectID:      c.SubjectID,
+		SubjectType:    &c.SubjectType,
+		CollectionType: &c.CollectionType,
+		CollectedTime:  &c.CollectedTime,
+		Rating:         &c.Rating,
+	}
 }
