@@ -9,6 +9,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	collectionInsertBatchSize = 50
+)
+
 type UserPersistenceService struct {
 	bgmClient      *dao.BgmApiAccessor
 	konomiAccessor dao.KonomiAccessor
@@ -40,9 +44,7 @@ func (svc *UserPersistenceService) Persist(uids []string) error {
 
 		insertUserErr := svc.konomiAccessor.InsertUser(user)
 		if insertUserErr == nil {
-			for _, collection := range watchedCollections {
-				svc.konomiAccessor.InsertCollection(collection)
-			}
+			svc.konomiAccessor.BatchInsertCollection(watchedCollections, collectionInsertBatchSize)
 			log.Info().Msgf("Successfully persisted user: %s", uid)
 		} else {
 			log.Warn().Err(insertUserErr).Msgf("Failed to persist user: %s. Skipping...", uid)

@@ -22,3 +22,11 @@ func (u *User) ToBgmUser() jetmodel.BgmUser {
 		LastActiveTime: &u.LastActiveTime,
 	}
 }
+
+func ToBgmUsers(users []User) []jetmodel.BgmUser {
+	bgmUsers := make([]jetmodel.BgmUser, 0, len(users))
+	for _, user := range users {
+		bgmUsers = append(bgmUsers, user.ToBgmUser())
+	}
+	return bgmUsers
+}

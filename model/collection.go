@@ -53,3 +53,11 @@ func (c *Collection) ToBgmUserCollection() jetmodel.BgmUserCollection {
 		Rating:         &c.Rating,
 	}
 }
+
+func ToBgmUserCollections(collections []Collection) []jetmodel.BgmUserCollection {
+	bgmUserCollections := make([]jetmodel.BgmUserCollection, 0, len(collections))
+	for _, collection := range collections {
+		bgmUserCollections = append(bgmUserCollections, collection.ToBgmUserCollection())
+	}
+	return bgmUserCollections
+}
