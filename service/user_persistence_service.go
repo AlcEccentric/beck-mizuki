@@ -11,10 +11,10 @@ import (
 
 type UserPersistenceService struct {
 	bgmClient      *dao.BgmApiAccessor
-	konomiAccessor *dao.KonomiAccessor
+	konomiAccessor dao.KonomiAccessor
 }
 
-func NewUserPersistenceService(bgmClinet *dao.BgmApiAccessor, konomiAccessor *dao.KonomiAccessor) *UserPersistenceService {
+func NewUserPersistenceService(bgmClinet *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) *UserPersistenceService {
 	return &UserPersistenceService{
 		bgmClient:      bgmClinet,
 		konomiAccessor: konomiAccessor,
@@ -38,11 +38,16 @@ func (svc *UserPersistenceService) Persist(uids []string) error {
 			continue
 		}
 
-		svc.konomiAccessor.InsertUser(user)
-		for _, collection := range watchedCollections {
-			svc.konomiAccessor.InsertCollection(collection)
+		insertUserErr := svc.konomiAccessor.InsertUser(user)
+		if insertUserErr == nil {
+			for _, collection := range watchedCollections {
+				svc.konomiAccessor.InsertCollection(collection)
+			}
+			log.Info().Msgf("Successfully persisted user: %s", uid)
+		} else {
+			log.Warn().Err(insertUserErr).Msgf("Failed to persist user: %s. Skipping...", uid)
 		}
-		log.Info().Msgf("Successfully persisted user: %s", uid)
+
 		persistedUserCnt++
 	}
 	log.Info().Msgf("At the end, persisted %d users", persistedUserCnt)

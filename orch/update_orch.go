@@ -12,7 +12,7 @@ type UpdateOrchestrator struct {
 	persistenceService *service.UserPersistenceService
 }
 
-func NewUpdateOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao.KonomiAccessor) *UpdateOrchestrator {
+func NewUpdateOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) *UpdateOrchestrator {
 	return &UpdateOrchestrator{
 		bgmClient:          bgmClient,
 		subjectSvc:         service.NewSubjectService(bgmClient),

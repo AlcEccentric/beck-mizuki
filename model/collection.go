@@ -1,8 +1,9 @@
 package model
 
+import "time"
+
 type CollectionType int
 
-// Define constants using iota
 const (
 	_ CollectionType = iota
 	ToWatch
@@ -11,15 +12,6 @@ const (
 	Postponed
 	Discarded
 )
-
-type Collection struct {
-	UserID         string `bson:"user_id"`
-	SubjectID      string `bson:"subject_id"`
-	SubjectType    int    `bson:"subject_type"`
-	CollectionType int    `bson:"collection_type"`
-	CollectedTime  string `bson:"collected_time"`
-	Rating         int    `bson:"rating,omitempty"`
-}
 
 func (ct CollectionType) String() string {
 	switch ct {
@@ -36,4 +28,22 @@ func (ct CollectionType) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+const (
+	crCollectionTable = "bgm_user_collection"
+)
+
+type Collection struct {
+	UserID         string    `bson:"user_id" gorm:"column:user_id"`
+	SubjectID      string    `bson:"subject_id" gorm:"column:subject_id"`
+	SubjectType    int       `bson:"subject_type" gorm:"column:subject_type"`
+	CollectionType int       `bson:"collection_type" gorm:"column:collection_type"`
+	CollectedTime  time.Time `bson:"collected_time" gorm:"column:collected_time"`
+	Rating         int       `bson:"rating,omitempty" gorm:"column:rating"`
+}
+
+// It's for gorm to identify the target table
+func (Collection) TableName() string {
+	return crCollectionTable
 }

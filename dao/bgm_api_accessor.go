@@ -145,12 +145,7 @@ func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
 			break
 		}
 
-		oldestCollectionTime, parseErr := time.Parse(util.CollectionTimeFormat, collections[len(collections)-1].CollectedTime)
-		if parseErr != nil {
-			return nil, parseErr
-		}
-
-		if time.Since(oldestCollectionTime) >= time.Duration(recentWindowInDays)*24*time.Hour {
+		if time.Since(collections[len(collections)-1].CollectedTime) >= time.Duration(recentWindowInDays)*24*time.Hour {
 			break
 		}
 		offset += util.PageLimit
@@ -173,12 +168,21 @@ func (apiClient *BgmApiAccessor) addCollections(getPagedCollectionReq *req.GetPa
 	collectionResults := respBody.Get("data").Array()
 	for _, collectionResult := range collectionResults {
 		if collectionAcceptor(collectionResult) {
+
+			collectedTime, err := time.Parse(util.CollecttedTimeFormat, collectionResult.Get("updated_at").String())
+
+			if err != nil {
+				log.Error().Err(err).Msgf("Failed to parse collection time %s for user %s subject id %s", collectionResult.Get("updated_at").String(),
+					getPagedCollectionReq.Uid, collectionResult.Get("subject_id").String())
+				continue
+			}
+
 			collections = append(collections, model.Collection{
 				UserID:         getPagedCollectionReq.Uid,
 				SubjectType:    int(getPagedCollectionReq.SubjectType),
 				SubjectID:      collectionResult.Get("subject_id").String(),
 				CollectionType: int(getPagedCollectionReq.CollectionType),
-				CollectedTime:  collectionResult.Get("updated_at").String(),
+				CollectedTime:  collectedTime,
 				Rating:         int(collectionResult.Get("rate").Int()),
 			})
 		}

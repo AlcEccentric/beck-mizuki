@@ -19,7 +19,7 @@ const (
 	// various data format
 	SubjectDateFormat           = "2006-01-02"
 	LaunchDateFormat            = "2006-01-02"
-	CollectionTimeFormat        = "2006-01-02T15:04:05-07:00"
+	CollecttedTimeFormat        = "2006-01-02T15:04:05-07:00"
 	WebsiteCollectionTimeFormat = "2006-1-2 15:04"
 
 	// API parameters
@@ -35,10 +35,12 @@ const (
 	ScraperAdditionalDelayInS  = 2
 
 	// Orchestration parameters
+	// Cold start
 	ColdStartIntervalInDays                  = 90
 	NumOfSubjectRetrievers                   = 40
 	NumOfUserIdRetrievers                    = 1 // could be more than 1 but should be cautious as it will incur high pressure on the target website
 	NumOfUserIdMergers                       = 1 // must be one as the ids will be merged into a map and map is not thread safe
 	UserIdRetrieverCoolDownSecondsPerSubject = 2
-	RegularUpdateIntervalInDays              = 30
+	// Regular update
+	RegularUpdateIntervalInDays = 30
 )

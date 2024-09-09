@@ -99,12 +99,7 @@ func isActiveWatched(collections []model.Collection, intervalDays int) bool {
 	lastIntervalIdx := -1
 	toleranceCounter := util.NonWatchedIntervalTolerance
 	for i := 0; i < len(collections); i++ {
-		collectionTime, err := time.Parse(util.CollectionTimeFormat, collections[i].CollectedTime)
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to parse collection time: %s. Skipping.", collections[i].CollectedTime)
-			return false
-		}
-		curIntervalIdx := int(time.Since(collectionTime).Hours()) / (24 * intervalDays)
+		curIntervalIdx := int(time.Since(collections[i].CollectedTime).Hours()) / (24 * intervalDays)
 		toleranceCounter -= ((curIntervalIdx - lastIntervalIdx) - 1)
 
 		if toleranceCounter < 0 {

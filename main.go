@@ -5,6 +5,7 @@ import (
 
 	"github.com/alceccentric/beck-crawler/dao"
 	"github.com/alceccentric/beck-crawler/orch"
+	"github.com/alceccentric/beck-crawler/util"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 )
@@ -21,11 +22,11 @@ func main() {
 
 	// Create dependencies (TODO: adopt DI if # of dependencies exceeds 3)
 	bgmClient := dao.NewBgmApiAccessor()
-	konomiAccessor := dao.NewKonomiAccessor()
+	konomiAccessor := dao.NewCRKonomiAccessor()
 
 	// Start execution
 	orch := orch.NewColdStartOrchestrator(bgmClient, konomiAccessor)
-	orch.Run(40, 1, 1)
+	orch.Run(util.NumOfSubjectRetrievers, util.NumOfUserIdRetrievers, util.NumOfUserIdMergers)
 
 	// Clean up
 	konomiAccessor.Disconnect()

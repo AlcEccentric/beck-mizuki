@@ -16,7 +16,7 @@ type ColdStartOrchestrator struct {
 	persistenceService *service.UserPersistenceService
 }
 
-func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor *dao.KonomiAccessor) *ColdStartOrchestrator {
+func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) *ColdStartOrchestrator {
 	return &ColdStartOrchestrator{
 		bgmClient:          bgmClient,
 		subjectSvc:         service.NewSubjectService(bgmClient),

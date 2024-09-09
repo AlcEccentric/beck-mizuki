@@ -13,7 +13,7 @@ import (
 type SearchSubjectPagedRequest struct {
 	Tags         []string
 	Types        []model.SubjectType
-	AirDateRange [2]time.Time
+	AirDateRange [2]time.Time // [begin, end)
 	RatingRange  [2]float32
 	Limit        int
 	Offset       int
@@ -32,7 +32,7 @@ func (request *SearchSubjectPagedRequest) ToBody() string {
 		  "tag": ["` + strings.Join(request.Tags, ",") + `"],
 		  "air_date": [
 			">=` + startDate + `",
-			"<=` + endDate + `"
+			"<` + endDate + `"
 		  ],
 		  "rating": [
 			">=` + fmt.Sprintf("%f", request.RatingRange[0]) + `",
