@@ -11,14 +11,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type UserIdService struct {
+type UserIdScrapingService struct {
 }
 
-func NewUserIdService() *UserIdService {
-	return &UserIdService{}
+func NewUserIdScrapingService() *UserIdScrapingService {
+	return &UserIdScrapingService{}
 }
 
-func (orch *UserIdService) GetUserIdCollector(coldStartIntervalInDays int) func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
+func (svc *UserIdScrapingService) GetUserIdRetriever(coldStartIntervalInDays int) func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
 	return func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {
 		log.Info().Msgf("Retrieving ids for users who completed some works in the last %d days for %d subjects", coldStartIntervalInDays, len(in.Subjects))
 		subjectUserScraper := scraper.NewSubjectUserScraper(coldStartIntervalInDays, len(in.Subjects))
@@ -47,7 +47,7 @@ func (orch *UserIdService) GetUserIdCollector(coldStartIntervalInDays int) func(
 	}
 }
 
-func (orch *UserIdService) GetUserIdMerger() (func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error), map[string]struct{}) {
+func (svc *UserIdScrapingService) GetUserIdMerger() (func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error), map[string]struct{}) {
 	userIdSet := make(map[string]struct{})
 
 	userMergerFn := func(in *orchJob.ColdStartOrchJob) (*orchJob.ColdStartOrchJob, error) {

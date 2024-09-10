@@ -7,7 +7,7 @@ const (
 	T2WatchedCnt                = 800
 	T3WatchedCnt                = 1200
 	MinWatchingCnt              = 10
-	ActivityCheckDays           = 90 // Better to be the same as CollectionCheckDays
+	ActivityCheckDays           = 90 // Should be at least twice as long as RegularActivityCheckDays
 	T1IntervalDays              = 10
 	T2IntervalDays              = 20
 	T3IntervalDays              = 30
@@ -43,4 +43,7 @@ const (
 	UserIdRetrieverCoolDownSecondsPerSubject = 2
 	// Regular update
 	RegularUpdateIntervalInDays = 30
+	NumOfUserIDReaders          = 5
+	NumOfUserUpdaters           = 5
+	NumOfUserCleaners           = 5
 )

@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
+	. "github.com/go-jet/jet/v2/postgres"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 
 	"github.com/alceccentric/beck-crawler/model"
+	jetmodel "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/model"
 	. "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/table"
 )
 
@@ -42,10 +43,67 @@ func (accessor *KonomiCRAccessor) Disconnect() {
 	accessor.db.Close()
 }
 
+func (accessor *KonomiCRAccessor) GetRowCount(table Table) (int, error) {
+	stmt := table.SELECT(COUNT(STAR)).
+		FROM(table)
+
+	var rows []struct {
+		Count int
+	}
+	err := stmt.Query(accessor.db, &rows)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return rows[0].Count, nil
+}
+
+func (accessor *KonomiCRAccessor) GetUserIdsPaginated(offset, limit int) ([]string, error) {
+	stmt := BgmUser.SELECT(BgmUser.ID).
+		FROM(BgmUser).
+		LIMIT(int64(limit)).
+		OFFSET(int64(offset))
+
+	var rows []string
+	err := stmt.Query(accessor.db, &rows)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+func (accessor *KonomiCRAccessor) GetUser(uid string) (model.User, error) {
+	stmt := BgmUser.SELECT(STAR).
+		FROM(BgmUser).
+		WHERE(BgmUser.ID.EQ(String(uid)))
+
+	var rows []jetmodel.BgmUser
+	err := stmt.Query(accessor.db, &rows)
+
+	if err != nil {
+		return model.User{}, err
+	}
+
+	if len(rows) == 0 {
+		return model.User{}, errors.New("user not found")
+	}
+
+	return model.FromBgmUser(rows[0]), nil
+}
+
 func (accessor *KonomiCRAccessor) InsertUser(user model.User) error {
 	stmt := BgmUser.INSERT(BgmUser.AllColumns).
 		MODEL(user.ToBgmUser()).
-		ON_CONFLICT(BgmUser.ID).DO_NOTHING()
+		ON_CONFLICT(BgmUser.ID).
+		DO_UPDATE(SET(
+			BgmUser.Nickname.SET(String(user.Nickname)),
+			BgmUser.AvatarURL.SET(String(user.AvatarURL)),
+			BgmUser.LastActiveTime.SET(TimestampzT(user.LastActiveTime)),
+		))
+
 	_, err := stmt.Exec(accessor.db)
 
 	if err != nil {
@@ -67,9 +125,7 @@ func (accessor *KonomiCRAccessor) BatchInsertUser(users []model.User, batchSize 
 			MODELS(model.ToBgmUsers(users[startIdx:endIdx])).
 			ON_CONFLICT(BgmUser.ID).DO_NOTHING()
 
-		start := time.Now()
 		_, err := stmt.Exec(accessor.db)
-		fmt.Printf("BatchInsertUser took %s\n", time.Since(start))
 
 		if err != nil {
 			errs = append(errs, err)
@@ -81,6 +137,17 @@ func (accessor *KonomiCRAccessor) BatchInsertUser(users []model.User, batchSize 
 		return errors.Join(errs...)
 	}
 
+	return nil
+}
+
+func (accessor *KonomiCRAccessor) DeleteUser(uid string) error {
+	stmt := BgmUser.DELETE().
+		WHERE(BgmUser.ID.EQ(String(uid)))
+
+	_, err := stmt.Exec(accessor.db)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -108,6 +175,7 @@ func (accessor *KonomiCRAccessor) BatchInsertCollection(collections []model.Coll
 		stmt := BgmUserCollection.INSERT(BgmUserCollection.AllColumns).
 			MODELS(model.ToBgmUserCollections(collections[startIdx:endIdx])).
 			ON_CONFLICT(BgmUserCollection.UserID, BgmUserCollection.SubjectID).DO_NOTHING()
+
 		_, err := stmt.Exec(accessor.db)
 
 		if err != nil {
@@ -120,5 +188,16 @@ func (accessor *KonomiCRAccessor) BatchInsertCollection(collections []model.Coll
 		return errors.Join(errs...)
 	}
 
+	return nil
+}
+
+func (accessor *KonomiCRAccessor) DeleteCollectionByUid(uid string) error {
+	stmt := BgmUserCollection.DELETE().
+		WHERE(BgmUserCollection.UserID.EQ(String(uid)))
+
+	_, err := stmt.Exec(accessor.db)
+	if err != nil {
+		return err
+	}
 	return nil
 }

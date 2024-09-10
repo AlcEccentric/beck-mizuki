@@ -13,19 +13,19 @@ const (
 	collectionInsertBatchSize = 50
 )
 
-type UserPersistenceService struct {
+type UserPersistingService struct {
 	bgmClient      *dao.BgmApiAccessor
 	konomiAccessor dao.KonomiAccessor
 }
 
-func NewUserPersistenceService(bgmClinet *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) *UserPersistenceService {
-	return &UserPersistenceService{
+func NewUserPersistenceService(bgmClinet *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) *UserPersistingService {
+	return &UserPersistingService{
 		bgmClient:      bgmClinet,
 		konomiAccessor: konomiAccessor,
 	}
 }
 
-func (svc *UserPersistenceService) Persist(uids []string) error {
+func (svc *UserPersistingService) Persist(uids []string) error {
 	log.Info().Msgf("Trying to persist %d users", len(uids))
 	persistedUserCnt := 0
 	for _, uid := range uids {
@@ -56,7 +56,7 @@ func (svc *UserPersistenceService) Persist(uids []string) error {
 	return nil
 }
 
-func (svc *UserPersistenceService) getUser(uid string) (model.User, error) {
+func (svc *UserPersistingService) getUser(uid string) (model.User, error) {
 	latestCollectionTime, err := svc.bgmClient.GetCollectionTime(uid, 0, model.Watched, model.Anime)
 	if err != nil {
 		return model.User{}, fmt.Errorf("failed to get latest collection time for user: %s (%w)", uid, err)

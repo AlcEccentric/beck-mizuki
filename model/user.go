@@ -30,3 +30,20 @@ func ToBgmUsers(users []User) []jetmodel.BgmUser {
 	}
 	return bgmUsers
 }
+
+func FromBgmUser(bgmUser jetmodel.BgmUser) User {
+	return User{
+		ID:             bgmUser.ID,
+		Nickname:       *bgmUser.Nickname,
+		AvatarURL:      *bgmUser.AvatarURL,
+		LastActiveTime: *bgmUser.LastActiveTime,
+	}
+}
+
+func FromBgmUsers(bgmUsers []jetmodel.BgmUser) []User {
+	users := make([]User, 0, len(bgmUsers))
+	for _, bgmUser := range bgmUsers {
+		users = append(users, FromBgmUser(bgmUser))
+	}
+	return users
+}

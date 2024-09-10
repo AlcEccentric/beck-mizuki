@@ -32,8 +32,21 @@ var tagsToReject = map[string]struct{}{
 	"MV":   {},
 }
 
-func IsVip(uid string, bgmAPI *dao.BgmApiAccessor) (bool, []model.Collection) {
-	// raw watched collection count filter
+func IsVip(uid string, bgmAPI *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) (bool, []model.Collection) {
+
+	_, err := konomiAccessor.GetUser(uid)
+	if err == nil {
+		// Any existing user is considered as vip
+		// This is because:
+		// 1. The first run should have checked non-activity related criteria for the user
+		// 2. The regular update orchestrator runs with shorter interval to clean up inactive users
+		// That said, remaining users can be approximately considered as VIP users
+		// (I say "approximately" because few users might become inactive between this cold start run and the last regular update run.
+		// As long as the interval of regular update is not too long (like >0.5 activity check window), this should be fine.)
+		return true, nil
+	}
+
+	// raw watched collection count test
 	rawWatchedCount, err := bgmAPI.GetCollectionCount(uid, model.Watched, model.Anime)
 
 	if err != nil {
@@ -46,6 +59,7 @@ func IsVip(uid string, bgmAPI *dao.BgmApiAccessor) (bool, []model.Collection) {
 		return false, nil
 	}
 
+	// earlist watched collection time test
 	earliestWatchedTime, err := bgmAPI.GetCollectionTime(uid, rawWatchedCount-1, model.Watched, model.Anime)
 
 	if err != nil {
@@ -58,29 +72,15 @@ func IsVip(uid string, bgmAPI *dao.BgmApiAccessor) (bool, []model.Collection) {
 		return false, nil
 	}
 
-	// leveled activity check
-	recentWatched, err := bgmAPI.GetRecentCollections(uid, model.Watched, model.Anime, animeFilter, util.ActivityCheckDays)
-	if err != nil {
-		log.Error().Err(err).Msgf("Failed to get recent watched collections for user: %s. Skipping.", uid)
-		return false, nil
-	}
-
-	active := true
-	if rawWatchedCount < util.T2WatchedCnt {
-		active = isActiveWatched(recentWatched, util.T1IntervalDays) || isActiveWatching(bgmAPI, uid)
-	} else if rawWatchedCount < util.T3WatchedCnt {
-		active = isActiveWatched(recentWatched, util.T2IntervalDays) || isActiveWatching(bgmAPI, uid)
-	} else {
-		active = isActiveWatched(recentWatched, util.T3IntervalDays) || isActiveWatching(bgmAPI, uid)
-	}
-
-	if !active {
+	// leveled activity test
+	isActive := IsActive(bgmAPI, uid, rawWatchedCount)
+	if !isActive {
 		log.Debug().Msgf("Ignore user: %s because not considered active", uid)
 		return false, nil
 	}
 
 	// filtered watched count check
-	filteredWatched, err := bgmAPI.GetCollections(uid, model.Watched, model.Anime, animeFilter)
+	filteredWatched, err := bgmAPI.GetCollections(uid, model.Watched, model.Anime, AnimeFilter)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to get filtered watched collections for user: %s. Skipping.", uid)
 		return false, nil
@@ -93,6 +93,40 @@ func IsVip(uid string, bgmAPI *dao.BgmApiAccessor) (bool, []model.Collection) {
 
 	// Return filtered watched to reduce the number of API calls
 	return true, filteredWatched
+}
+
+func AnimeFilter(animeCol gjson.Result) bool {
+	tags := animeCol.Get("subject").Get("tags").Array()
+	for _, tag := range tags {
+		if _, ok := tagsToReject[tag.Get("name").String()]; ok {
+			return false
+		}
+	}
+	// only accept collection with rating
+	rating := int(animeCol.Get("rate").Int())
+	if rating == 0 {
+		return false
+	}
+	collectionTotal := animeCol.Get("subject").Get("collection_total").Int()
+	// assuming a subject with too few collections are not generally available
+	// meaning not watching it does not necessarily mean people are not interested in the work
+	return collectionTotal >= util.SubjectMinCollectionCnt
+}
+
+func IsActive(bgmAPI *dao.BgmApiAccessor, uid string, rawWatchedCount int) bool {
+	recentWatched, err := bgmAPI.GetRecentCollections(uid, model.Watched, model.Anime, AnimeFilter, util.ActivityCheckDays)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to get recent watched collections for user: %s. Skipping.", uid)
+		return false
+	}
+
+	if rawWatchedCount < util.T2WatchedCnt {
+		return isActiveWatched(recentWatched, util.T1IntervalDays) || isActiveWatching(bgmAPI, uid)
+	} else if rawWatchedCount < util.T3WatchedCnt {
+		return isActiveWatched(recentWatched, util.T2IntervalDays) || isActiveWatching(bgmAPI, uid)
+	} else {
+		return isActiveWatched(recentWatched, util.T3IntervalDays) || isActiveWatching(bgmAPI, uid)
+	}
 }
 
 func isActiveWatched(collections []model.Collection, intervalDays int) bool {
@@ -111,7 +145,7 @@ func isActiveWatched(collections []model.Collection, intervalDays int) bool {
 }
 
 func isActiveWatching(bgmAPI *dao.BgmApiAccessor, uid string) bool {
-	watching, err := bgmAPI.GetRecentCollections(uid, model.Watching, model.Anime, animeFilter, util.ActivityCheckDays)
+	watching, err := bgmAPI.GetRecentCollections(uid, model.Watching, model.Anime, AnimeFilter, util.ActivityCheckDays)
 
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to get recent watching collections for user: %s. Skipping.", uid)
@@ -119,22 +153,4 @@ func isActiveWatching(bgmAPI *dao.BgmApiAccessor, uid string) bool {
 	}
 
 	return len(watching) >= util.MinWatchingCnt
-}
-
-func animeFilter(animeCol gjson.Result) bool {
-	tags := animeCol.Get("subject").Get("tags").Array()
-	for _, tag := range tags {
-		if _, ok := tagsToReject[tag.Get("name").String()]; ok {
-			return false
-		}
-	}
-	// only accept collection with rating
-	rating := int(animeCol.Get("rate").Int())
-	if rating == 0 {
-		return false
-	}
-	collectionTotal := animeCol.Get("subject").Get("collection_total").Int()
-	// assuming a subject with too few collections are not generally available
-	// meaning not watching it does not necessarily mean people are not interested in the work
-	return collectionTotal >= util.SubjectMinCollectionCnt
 }

@@ -12,15 +12,15 @@ import (
 type ColdStartOrchestrator struct {
 	bgmClient          *dao.BgmApiAccessor
 	subjectSvc         *service.SubjectService
-	userIdSvc          *service.UserIdService
-	persistenceService *service.UserPersistenceService
+	userIdSvc          *service.UserIdScrapingService
+	persistenceService *service.UserPersistingService
 }
 
 func NewColdStartOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) *ColdStartOrchestrator {
 	return &ColdStartOrchestrator{
 		bgmClient:          bgmClient,
 		subjectSvc:         service.NewSubjectService(bgmClient),
-		userIdSvc:          service.NewUserIdService(),
+		userIdSvc:          service.NewUserIdScrapingService(),
 		persistenceService: service.NewUserPersistenceService(bgmClient, konomiAccessor),
 	}
 }
@@ -33,7 +33,7 @@ func (orch *ColdStartOrchestrator) Run(numOfSubjectRetrievers, numOfUserIdRetrie
 		Msg("Start cold start orchestrator")
 
 	subjectRetrieverFn := orch.subjectSvc.GetSubjectRetriever(numOfSubjectRetrievers)
-	userIdRetrieverFn := orch.userIdSvc.GetUserIdCollector(util.ColdStartIntervalInDays)
+	userIdRetrieverFn := orch.userIdSvc.GetUserIdRetriever(util.ColdStartIntervalInDays)
 	userMergerFn, userIdSet := orch.userIdSvc.GetUserIdMerger()
 
 	subjectRetriever := pipeline.NewProducer(

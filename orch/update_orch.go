@@ -3,35 +3,69 @@ package orch
 import (
 	dao "github.com/alceccentric/beck-crawler/dao"
 	"github.com/alceccentric/beck-crawler/service"
+	"github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/rs/zerolog/log"
+)
+
+const (
+	userIdBatchSize = 1000
 )
 
 type UpdateOrchestrator struct {
-	bgmClient          *dao.BgmApiAccessor
-	subjectSvc         *service.SubjectService
-	userIdSvc          *service.UserIdService
-	persistenceService *service.UserPersistenceService
+	bgmClient        *dao.BgmApiAccessor
+	userIdReadingSvc *service.UserIdReadingService
+	userUpdatingSvc  *service.UserUpdatingService
+	userCleaningSvc  *service.UserCleaningService
 }
 
 func NewUpdateOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor dao.KonomiAccessor) *UpdateOrchestrator {
 	return &UpdateOrchestrator{
-		bgmClient:          bgmClient,
-		subjectSvc:         service.NewSubjectService(bgmClient),
-		userIdSvc:          service.NewUserIdService(),
-		persistenceService: service.NewUserPersistenceService(bgmClient, konomiAccessor),
+		bgmClient:        bgmClient,
+		userIdReadingSvc: service.NewUserIdReadingService(konomiAccessor),
 	}
 }
 
-func (orch *UpdateOrchestrator) Run(numOfCollectionUpdater, numOfDataCleaner int) {
-	// 1. fetch user id with last active time & divide into batches
+func (orch *UpdateOrchestrator) Run(numOfUserIdReaders, numOfCollectionUpdater, numOfDataCleaner int) {
+	log.Info().
+		Int("numOfUserIdRetrievers", numOfUserIdReaders).
+		Int("numOfCollectionUpdater", numOfCollectionUpdater).
+		Int("numOfDataCleaner", numOfDataCleaner).
+		Msg("Start regular update orchestrator")
 
 	// For user info each batch:
 	// 1. perform VIP activity check
-	// 2. put user into a inactive user list if the check fails
-	// 3. otherwise
-	// 3.1. fetch collections happened after last active time for the user
-	// 3.2. update last active time
-	// 3.3. persist user info & new collections
-	// 4. remove user & their collections info for users in inactive user list
+	// 2. Succeed:
+	// 2.1. Upsert user info into db
+	// 2.2. Insert new collections since last active time (also update last active time for the user)
+	// 3. Fail:
+	// 3.1. remove user & collections
+
+	userIdReaderFn := orch.userIdReadingSvc.GetUserIdReader(numOfUserIdReaders)
+	userUpdaterFn := orch.userUpdatingSvc.GetUserUpdater()
+	userCleanerFn := orch.userCleaningSvc.GetUserCleaner()
+
+	userIdReader := pipeline.NewProducer(
+		userIdReaderFn,
+		pipeline.Name("Read user ids from db"),
+	)
+
+	userUpdater := pipeline.NewStage(
+		userUpdaterFn,
+		pipeline.Name("Update info for active users and identify inactive users"),
+	)
+
+	userCleaner := pipeline.NewStage(
+		userCleanerFn,
+		pipeline.Name("Clean up inactive users"),
+	)
+
+	if err := pipeline.Do(
+		userIdReader,
+		userUpdater,
+		userCleaner,
+	); err != nil {
+		log.Error().Err(err).Msg("Failed to run regular update pipeline")
+	}
 
 	// TODO:
 	// As updater will update user info frequently, it ensures user left in the table is VIP

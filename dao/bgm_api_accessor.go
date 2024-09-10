@@ -94,26 +94,27 @@ func (apiClient *BgmApiAccessor) GetCollections(uid string, ctype model.Collecti
 	offset := 0
 	collections := make([]model.Collection, 0)
 	log.Debug().Msgf("Sending get collection request with uid %s, ctype %s, stype %s", uid, ctype.String(), stype.String())
+
 	for {
-		originalColCnt := len(collections)
-		var err error
 		log.Debug().Msgf("Sending get collection request with uid %s, ctype %s, stype %s [offset %d]", uid, ctype.String(), stype.String(), offset)
-		collections, err = apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
+		newCollections, err := apiClient.getCollections(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
 			SubjectType:    stype,
 			Offset:         offset,
 			Limit:          util.PageLimit,
-		}, collectionAcceptor, collections)
+		}, collectionAcceptor)
 
 		if err != nil {
 			return nil, err
 		}
 
-		if len(collections) == originalColCnt {
+		if len(newCollections) == 0 {
 			break
+		} else {
+			collections = append(collections, newCollections...)
+			offset += util.PageLimit
 		}
-		offset += util.PageLimit
 	}
 	return collections, nil
 }
@@ -126,58 +127,58 @@ func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
 	offset := 0
 	collections := make([]model.Collection, 0)
 	log.Debug().Msgf("Sending get recent collection request with uid %s, ctype %s, stype %s, recentWindowInDays %d", uid, ctype.String(), stype.String(), recentWindowInDays)
+
 	for {
-		originalColCnt := len(collections)
-		var fetchErr error
 		log.Debug().Msgf("Sending get collection request with uid %s, ctype %s, stype %s, recentWindowInDays %d [offset %d]", uid, ctype.String(), stype.String(), recentWindowInDays, offset)
-		collections, fetchErr = apiClient.addCollections(&req.GetPagedUserCollectionsRequest{
+		newCollections, err := apiClient.getCollections(&req.GetPagedUserCollectionsRequest{
 			Uid:            uid,
 			CollectionType: ctype,
 			SubjectType:    stype,
 			Offset:         offset,
 			Limit:          util.PageLimit,
-		}, collectionAcceptor, collections)
-		if fetchErr != nil {
-			return nil, fetchErr
+		}, collectionAcceptor)
+		if err != nil {
+			return nil, err
 		}
 
-		if len(collections) == originalColCnt {
+		filteredNewCollections := make([]model.Collection, 0)
+		for _, newCollection := range newCollections {
+			if time.Since(newCollection.CollectedTime) < time.Duration(recentWindowInDays)*24*time.Hour {
+				filteredNewCollections = append(filteredNewCollections, newCollection)
+			}
+		}
+
+		if len(filteredNewCollections) == 0 {
 			break
 		}
 
-		if time.Since(collections[len(collections)-1].CollectedTime) >= time.Duration(recentWindowInDays)*24*time.Hour {
-			break
-		}
 		offset += util.PageLimit
 	}
 	return collections, nil
 }
 
-func (apiClient *BgmApiAccessor) addCollections(getPagedCollectionReq *req.GetPagedUserCollectionsRequest,
-	collectionAcceptor func(gjson.Result) bool,
-	collections []model.Collection) ([]model.Collection, error) {
+func (apiClient *BgmApiAccessor) getCollections(getPagedCollectionReq *req.GetPagedUserCollectionsRequest, collectionAcceptor func(gjson.Result) bool) ([]model.Collection, error) {
+	newCollections := make([]model.Collection, 0)
 	respBody, resp, err := apiClient.get(getPagedCollectionReq)
-	if err != nil {
-		return collections, err
-	} else if exceedMaxCollectionCnt(resp, respBody) {
-		return collections, nil
+	if err != nil || isOverMaxCollectionCnt(resp, respBody) {
+		return newCollections, err
 	} else if !resp.IsSuccess() {
-		return collections, fmt.Errorf("GetPagedUserCollectionsRequest failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
+		return newCollections, fmt.Errorf("GetPagedUserCollectionsRequest failed with status: %s and code: %d", resp.Status(), resp.StatusCode())
 	}
 
 	collectionResults := respBody.Get("data").Array()
 	for _, collectionResult := range collectionResults {
+		// filter on the raw response result instead of parsed collection
+		// because I don't want to add any field to model.Collection which I don't want to persist (like tags, etc)
 		if collectionAcceptor(collectionResult) {
-
 			collectedTime, err := time.Parse(util.CollecttedTimeFormat, collectionResult.Get("updated_at").String())
-
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to parse collection time %s for user %s subject id %s", collectionResult.Get("updated_at").String(),
 					getPagedCollectionReq.Uid, collectionResult.Get("subject_id").String())
 				continue
 			}
 
-			collections = append(collections, model.Collection{
+			newCollections = append(newCollections, model.Collection{
 				UserID:         getPagedCollectionReq.Uid,
 				SubjectType:    int64(getPagedCollectionReq.SubjectType),
 				SubjectID:      collectionResult.Get("subject_id").String(),
@@ -187,7 +188,7 @@ func (apiClient *BgmApiAccessor) addCollections(getPagedCollectionReq *req.GetPa
 			})
 		}
 	}
-	return collections, nil
+	return newCollections, nil
 }
 
 func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.CollectionType, stype model.SubjectType) (int, error) {
@@ -208,7 +209,7 @@ func (apiClient *BgmApiAccessor) GetCollectionCount(uid string, ctype model.Coll
 
 	if resp.IsSuccess() {
 		return 0, fmt.Errorf("found a moron %s who said she/he watched more than %d animes", uid, util.MaxWatchedAnimeCount)
-	} else if exceedMaxCollectionCnt(resp, respBody) {
+	} else if isOverMaxCollectionCnt(resp, respBody) {
 		re := regexp.MustCompile(`less than or equal to (\d+)`)
 		match := re.FindStringSubmatch(respBody.Get("description").String())
 		if len(match) > 1 {
@@ -278,6 +279,6 @@ func (apiClient *BgmApiAccessor) randDelay() {
 	time.Sleep(time.Duration((apiClient.randGen.Intn(util.APICallAdditionalDelayInMs) + util.APICallBaseDelayInMs)) * time.Millisecond)
 }
 
-func exceedMaxCollectionCnt(resp *resty.Response, respBody gjson.Result) bool {
+func isOverMaxCollectionCnt(resp *resty.Response, respBody gjson.Result) bool {
 	return resp.StatusCode() == 400 && strings.Contains(respBody.Get("description").String(), "offset should be less than or equal to")
 }
