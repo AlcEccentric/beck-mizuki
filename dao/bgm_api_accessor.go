@@ -22,6 +22,27 @@ type BgmApiAccessor struct {
 }
 
 func NewBgmApiAccessor() *BgmApiAccessor {
+	restyClinet := resty.New()
+	initialWaitTime := 2 * time.Second
+	restyClinet.SetRetryCount(5). // Retry 5 times
+					AddRetryCondition(
+			func(r *resty.Response, err error) bool {
+				if err != nil {
+					return true
+				}
+				return r.StatusCode() >= 500 || r.StatusCode() == 429
+			},
+		).
+		SetRetryWaitTime(initialWaitTime).
+		SetRetryAfter( // Exponential backoff (2^n)
+			func(client *resty.Client, resp *resty.Response) (time.Duration, error) {
+				retryAttempt := resp.Request.Attempt
+				waitTime := initialWaitTime * (1 << (retryAttempt - 1))
+				fmt.Printf("Retrying in %v...\n", waitTime)
+				return waitTime, nil
+			},
+		)
+
 	return &BgmApiAccessor{
 		httpClient: resty.New(),
 		randGen:    rand.New(rand.NewSource(time.Now().UnixNano())),

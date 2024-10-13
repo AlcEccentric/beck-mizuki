@@ -40,7 +40,7 @@ func (svc *UserIdScrapingService) GetUserIdRetriever(coldStartIntervalInDays int
 		in.UserIds = subjectUserScraper.CollectUids()
 
 		coolDownPeriodInSeconds := len(in.Subjects) * util.UserIdRetrieverCoolDownSecondsPerSubject
-		log.Info().Msgf("Retrieved %d subjects. Will sleep %d seconds.", len(in.Subjects), coolDownPeriodInSeconds)
+		log.Info().Msgf("Retrieved uids from %d subjects. Will sleep %d seconds.", len(in.Subjects), coolDownPeriodInSeconds)
 		time.Sleep(time.Duration(coolDownPeriodInSeconds) * time.Second)
 
 		return in, nil

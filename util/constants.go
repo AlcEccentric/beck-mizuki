@@ -37,7 +37,7 @@ const (
 	// Orchestration parameters
 	// Cold start
 	ColdStartIntervalInDays                  = 120
-	NumOfSubjectRetrievers                   = 50
+	NumOfSubjectRetrievers                   = 30
 	NumOfUserIdRetrievers                    = 1 // could be more than 1 but should be cautious as it will incur high pressure on the target website
 	NumOfUserIdMergers                       = 1 // must be one as the ids will be merged into a map and map is not thread safe
 	UserIdRetrieverCoolDownSecondsPerSubject = 3
