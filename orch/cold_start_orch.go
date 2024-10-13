@@ -58,7 +58,7 @@ func (orch *ColdStartOrchestrator) Run(numOfSubjectRetrievers, numOfUserIdRetrie
 		userIdRetriever,
 		userMerger,
 	); err != nil {
-		log.Error().Err(err).Msg("Failed to run cold startpipeline")
+		log.Error().Err(err).Msg("Failed to run cold start pipeline")
 	} else {
 		log.Info().Msgf("Fetched %d user ids", len(userIdSet))
 		userIds := make([]string, 0, len(userIdSet))

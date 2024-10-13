@@ -76,7 +76,7 @@ func (accessor *KonomiCRAccessor) GetUserIdsPaginated(offset, limit int) ([]stri
 }
 
 func (accessor *KonomiCRAccessor) GetUser(uid string) (model.User, error) {
-	stmt := BgmUser.SELECT(STAR).
+	stmt := BgmUser.SELECT(BgmUser.AllColumns).
 		FROM(BgmUser).
 		WHERE(BgmUser.ID.EQ(String(uid)))
 

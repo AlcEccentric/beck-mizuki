@@ -7,7 +7,7 @@ const (
 	T2WatchedCnt                = 800
 	T3WatchedCnt                = 1200
 	MinWatchingCnt              = 10
-	ActivityCheckDays           = 90 // Should be at least twice as long as RegularActivityCheckDays
+	ActivityCheckDays           = 90 // Should be at least twice as long as RegularUpdateIntervalInDays
 	T1IntervalDays              = 10
 	T2IntervalDays              = 20
 	T3IntervalDays              = 30
@@ -36,8 +36,8 @@ const (
 
 	// Orchestration parameters
 	// Cold start
-	ColdStartIntervalInDays                  = 90
-	NumOfSubjectRetrievers                   = 40
+	ColdStartIntervalInDays                  = 120
+	NumOfSubjectRetrievers                   = 20
 	NumOfUserIdRetrievers                    = 1 // could be more than 1 but should be cautious as it will incur high pressure on the target website
 	NumOfUserIdMergers                       = 1 // must be one as the ids will be merged into a map and map is not thread safe
 	UserIdRetrieverCoolDownSecondsPerSubject = 2

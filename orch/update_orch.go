@@ -7,10 +7,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	userIdBatchSize = 1000
-)
-
 type UpdateOrchestrator struct {
 	bgmClient        *dao.BgmApiAccessor
 	userIdReadingSvc *service.UserIdReadingService
@@ -22,6 +18,8 @@ func NewUpdateOrchestrator(bgmClient *dao.BgmApiAccessor, konomiAccessor dao.Kon
 	return &UpdateOrchestrator{
 		bgmClient:        bgmClient,
 		userIdReadingSvc: service.NewUserIdReadingService(konomiAccessor),
+		userUpdatingSvc:  service.NewUserUpdatingService(bgmClient, konomiAccessor),
+		userCleaningSvc:  service.NewUserCleaningService(konomiAccessor),
 	}
 }
 
@@ -39,7 +37,6 @@ func (orch *UpdateOrchestrator) Run(numOfUserIdReaders, numOfCollectionUpdater, 
 	// 2.2. Insert new collections since last active time (also update last active time for the user)
 	// 3. Fail:
 	// 3.1. remove user & collections
-
 	userIdReaderFn := orch.userIdReadingSvc.GetUserIdReader(numOfUserIdReaders)
 	userUpdaterFn := orch.userUpdatingSvc.GetUserUpdater()
 	userCleanerFn := orch.userCleaningSvc.GetUserCleaner()
@@ -66,8 +63,4 @@ func (orch *UpdateOrchestrator) Run(numOfUserIdReaders, numOfCollectionUpdater, 
 	); err != nil {
 		log.Error().Err(err).Msg("Failed to run regular update pipeline")
 	}
-
-	// TODO:
-	// As updater will update user info frequently, it ensures user left in the table is VIP
-	// Thus, for user alreadly in the table, the cold start orchestrator should not perform VIP testing and should just fetch collections since last active time
 }

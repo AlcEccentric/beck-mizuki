@@ -141,6 +141,7 @@ func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
 			return nil, err
 		}
 
+		log.Debug().Msgf("Found %d new collections", len(newCollections))
 		filteredNewCollections := make([]model.Collection, 0)
 		for _, newCollection := range newCollections {
 			if time.Since(newCollection.CollectedTime) < time.Duration(recentWindowInDays)*24*time.Hour {
@@ -150,6 +151,8 @@ func (apiClient *BgmApiAccessor) GetRecentCollections(uid string,
 
 		if len(filteredNewCollections) == 0 {
 			break
+		} else {
+			collections = append(collections, filteredNewCollections...)
 		}
 
 		offset += util.PageLimit
