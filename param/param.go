@@ -25,10 +25,10 @@ func GetParams() (params Params) {
 
 func getMode(modeStr string) ExecutionMode {
 	if mode, err := CrawlerModeFromString(modeStr); err == nil {
-		log.Info().Msgf("Retrieving CrawlerMode from mode arg: %s", modeStr)
+		log.Info().Msgf("Retrieving CrawlerMode from mode arg string: %s", modeStr)
 		return mode
 	} else {
-		log.Info().Msgf("Retrieving CrawlerMode per days since launch date")
+		log.Info().Msgf("Retrieving CrawlerMode from env var LAUNCH_DATE")
 		launchDateStr := os.Getenv("LAUNCH_DATE")
 		if launchDateStr == "" {
 			log.Fatal().Msg("LAUNCH_DATE environment variable is not set")

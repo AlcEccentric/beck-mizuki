@@ -31,7 +31,7 @@ const (
 
 	// Scraper parameters
 	SubjectCollectionUrlFormat = "https://bangumi.tv/subject/%s/collections?page=%d"
-	ScraperBaseDelayInS        = 1
+	ScraperBaseDelayInS        = 2
 	ScraperAdditionalDelayInS  = 2
 
 	// Orchestration parameters
@@ -40,7 +40,7 @@ const (
 	NumOfSubjectRetrievers                   = 20
 	NumOfUserIdRetrievers                    = 1 // could be more than 1 but should be cautious as it will incur high pressure on the target website
 	NumOfUserIdMergers                       = 1 // must be one as the ids will be merged into a map and map is not thread safe
-	UserIdRetrieverCoolDownSecondsPerSubject = 2
+	UserIdRetrieverCoolDownSecondsPerSubject = 3
 	// Regular update
 	RegularUpdateIntervalInDays = 30
 	NumOfUserIDReaders          = 5
