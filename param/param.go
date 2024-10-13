@@ -3,6 +3,7 @@ package param
 import (
 	"flag"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/alceccentric/beck-crawler/util"
@@ -10,16 +11,33 @@ import (
 )
 
 type Params struct {
-	Mode ExecutionMode
+	Mode                    ExecutionMode
+	ColdStartIntervalInDays int
 }
 
 func GetParams() (params Params) {
 	var modeStr string
 	flag.StringVar(&modeStr, "mode", "", "mode: "+ColdStartMode.String()+" or "+RegularUpdateMode.String())
 	flag.Parse()
+	log.Info().Msgf("Retrieving CrawlerMode from flag arg string: %s", modeStr)
 
 	return Params{
-		Mode: getMode(modeStr),
+		Mode:                    getMode(modeStr),
+		ColdStartIntervalInDays: getColdStartIntervalInDays(),
+	}
+}
+
+func getColdStartIntervalInDays() int {
+	coldStartIntervalInDays := os.Getenv("COLD_START_INTERVAL_IN_DAYS")
+	if coldStartIntervalInDays == "" {
+		log.Warn().Msg("COLD_START_INTERVAL_IN_DAYS environment variable is not set")
+		return util.ColdStartIntervalInDays
+	} else {
+		coldStartIntervalInDaysInt, err := strconv.Atoi(coldStartIntervalInDays)
+		if err != nil {
+			log.Fatal().Err(err).Msgf("Failed to parse COLD_START_INTERVAL_IN_DAYS %s", coldStartIntervalInDays)
+		}
+		return coldStartIntervalInDaysInt
 	}
 }
 

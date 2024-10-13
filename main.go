@@ -31,7 +31,7 @@ func main() {
 	params := param.GetParams()
 	if params.Mode == param.ColdStartMode {
 		orch := orch.NewColdStartOrchestrator(bgmClient, konomiAccessor)
-		orch.Run(util.NumOfSubjectRetrievers, util.NumOfUserIdRetrievers, util.NumOfUserIdMergers)
+		orch.Run(util.NumOfSubjectRetrievers, util.NumOfUserIdRetrievers, util.NumOfUserIdMergers, params.ColdStartIntervalInDays)
 	} else if params.Mode == param.RegularUpdateMode {
 		orch := orch.NewUpdateOrchestrator(bgmClient, konomiAccessor)
 		orch.Run(util.NumOfUserIDReaders, util.NumOfUserUpdaters, util.NumOfUserCleaners)
