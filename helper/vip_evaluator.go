@@ -3,9 +3,9 @@ package helper
 import (
 	"time"
 
-	"github.com/alceccentric/beck-crawler/dao"
-	"github.com/alceccentric/beck-crawler/model"
-	"github.com/alceccentric/beck-crawler/util"
+	"github.com/AlcEccentric/beck-mizuki/dao"
+	"github.com/AlcEccentric/beck-mizuki/model"
+	"github.com/AlcEccentric/beck-mizuki/util"
 	"github.com/rs/zerolog/log"
 	"github.com/tidwall/gjson"
 )

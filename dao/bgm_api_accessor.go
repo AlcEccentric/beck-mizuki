@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	model "github.com/alceccentric/beck-crawler/model"
-	req "github.com/alceccentric/beck-crawler/model/request"
-	util "github.com/alceccentric/beck-crawler/util"
+	model "github.com/AlcEccentric/beck-mizuki/model"
+	req "github.com/AlcEccentric/beck-mizuki/model/request"
+	util "github.com/AlcEccentric/beck-mizuki/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/tidwall/gjson"

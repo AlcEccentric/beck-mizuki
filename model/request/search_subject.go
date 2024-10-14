@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	model "github.com/alceccentric/beck-crawler/model"
-	util "github.com/alceccentric/beck-crawler/util"
+	model "github.com/AlcEccentric/beck-mizuki/model"
+	util "github.com/AlcEccentric/beck-mizuki/util"
 )
 
 type SearchSubjectPagedRequest struct {

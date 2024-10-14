@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	model "github.com/alceccentric/beck-crawler/model"
+	model "github.com/AlcEccentric/beck-mizuki/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

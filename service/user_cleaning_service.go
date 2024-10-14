@@ -1,8 +1,8 @@
 package service
 
 import (
-	dao "github.com/alceccentric/beck-crawler/dao"
-	"github.com/alceccentric/beck-crawler/model/job"
+	dao "github.com/AlcEccentric/beck-mizuki/dao"
+	"github.com/AlcEccentric/beck-mizuki/model/job"
 )
 
 type UserCleaningService struct {

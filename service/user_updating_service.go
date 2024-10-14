@@ -4,10 +4,10 @@ import (
 	"math"
 	"time"
 
-	dao "github.com/alceccentric/beck-crawler/dao"
-	"github.com/alceccentric/beck-crawler/helper"
-	model "github.com/alceccentric/beck-crawler/model"
-	"github.com/alceccentric/beck-crawler/model/job"
+	dao "github.com/AlcEccentric/beck-mizuki/dao"
+	"github.com/AlcEccentric/beck-mizuki/helper"
+	model "github.com/AlcEccentric/beck-mizuki/model"
+	"github.com/AlcEccentric/beck-mizuki/model/job"
 	"github.com/rs/zerolog/log"
 )
 

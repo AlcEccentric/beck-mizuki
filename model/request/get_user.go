@@ -1,6 +1,6 @@
 package request
 
-import "github.com/alceccentric/beck-crawler/util"
+import "github.com/AlcEccentric/beck-mizuki/util"
 
 const ()
 

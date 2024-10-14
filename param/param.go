@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/alceccentric/beck-crawler/util"
+	"github.com/AlcEccentric/beck-mizuki/util"
 	"github.com/rs/zerolog/log"
 )
 

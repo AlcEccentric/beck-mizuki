@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/alceccentric/beck-crawler/util"
+	"github.com/AlcEccentric/beck-mizuki/util"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gocolly/colly"
 	"github.com/rs/zerolog/log"

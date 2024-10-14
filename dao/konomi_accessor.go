@@ -1,7 +1,7 @@
 package dao
 
 import (
-	model "github.com/alceccentric/beck-crawler/model"
+	model "github.com/AlcEccentric/beck-mizuki/model"
 	jet "github.com/go-jet/jet/v2/postgres"
 )
 

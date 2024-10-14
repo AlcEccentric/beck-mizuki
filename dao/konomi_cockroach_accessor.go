@@ -10,9 +10,9 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 
-	"github.com/alceccentric/beck-crawler/model"
-	jetmodel "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/model"
-	. "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/table"
+	"github.com/AlcEccentric/beck-mizuki/model"
+	jetmodel "github.com/AlcEccentric/beck-mizuki/model/gen/beck-konomi/public/model"
+	. "github.com/AlcEccentric/beck-mizuki/model/gen/beck-konomi/public/table"
 )
 
 const (

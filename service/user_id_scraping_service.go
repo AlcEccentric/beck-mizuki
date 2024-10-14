@@ -4,10 +4,10 @@ import (
 	"sync"
 	"time"
 
-	model "github.com/alceccentric/beck-crawler/model"
-	orchJob "github.com/alceccentric/beck-crawler/model/job"
-	"github.com/alceccentric/beck-crawler/scraper"
-	util "github.com/alceccentric/beck-crawler/util"
+	model "github.com/AlcEccentric/beck-mizuki/model"
+	orchJob "github.com/AlcEccentric/beck-mizuki/model/job"
+	"github.com/AlcEccentric/beck-mizuki/scraper"
+	util "github.com/AlcEccentric/beck-mizuki/util"
 	"github.com/rs/zerolog/log"
 )
 

@@ -1,4 +1,4 @@
-module github.com/alceccentric/beck-crawler
+module github.com/AlcEccentric/beck-mizuki
 
 go 1.22
 

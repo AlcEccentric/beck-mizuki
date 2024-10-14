@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	jetmodel "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/model"
+	jetmodel "github.com/AlcEccentric/beck-mizuki/model/gen/beck-konomi/public/model"
 )
 
 type CollectionType int

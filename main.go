@@ -3,10 +3,10 @@ package main
 import (
 	"os"
 
-	"github.com/alceccentric/beck-crawler/dao"
-	"github.com/alceccentric/beck-crawler/orch"
-	"github.com/alceccentric/beck-crawler/param"
-	"github.com/alceccentric/beck-crawler/util"
+	"github.com/AlcEccentric/beck-mizuki/dao"
+	"github.com/AlcEccentric/beck-mizuki/orch"
+	"github.com/AlcEccentric/beck-mizuki/param"
+	"github.com/AlcEccentric/beck-mizuki/util"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

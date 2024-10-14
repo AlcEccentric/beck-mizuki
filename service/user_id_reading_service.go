@@ -4,9 +4,9 @@ import (
 	"math"
 	"sync"
 
-	dao "github.com/alceccentric/beck-crawler/dao"
-	table "github.com/alceccentric/beck-crawler/model/gen/beck-konomi/public/table"
-	job "github.com/alceccentric/beck-crawler/model/job"
+	dao "github.com/AlcEccentric/beck-mizuki/dao"
+	table "github.com/AlcEccentric/beck-mizuki/model/gen/beck-konomi/public/table"
+	job "github.com/AlcEccentric/beck-mizuki/model/job"
 	"github.com/rs/zerolog/log"
 )
 

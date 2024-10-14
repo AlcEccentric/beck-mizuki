@@ -1,8 +1,8 @@
 package orch
 
 import (
-	dao "github.com/alceccentric/beck-crawler/dao"
-	"github.com/alceccentric/beck-crawler/service"
+	dao "github.com/AlcEccentric/beck-mizuki/dao"
+	"github.com/AlcEccentric/beck-mizuki/service"
 	"github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/rs/zerolog/log"
 )

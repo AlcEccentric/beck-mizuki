@@ -1,7 +1,7 @@
 package job
 
 import (
-	model "github.com/alceccentric/beck-crawler/model"
+	model "github.com/AlcEccentric/beck-mizuki/model"
 )
 
 type ColdStartOrchJob struct {

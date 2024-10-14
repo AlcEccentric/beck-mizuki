@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	dao "github.com/alceccentric/beck-crawler/dao"
-	model "github.com/alceccentric/beck-crawler/model"
-	job "github.com/alceccentric/beck-crawler/model/job"
-	util "github.com/alceccentric/beck-crawler/util"
+	dao "github.com/AlcEccentric/beck-mizuki/dao"
+	model "github.com/AlcEccentric/beck-mizuki/model"
+	job "github.com/AlcEccentric/beck-mizuki/model/job"
+	util "github.com/AlcEccentric/beck-mizuki/util"
 	"github.com/rs/zerolog/log"
 )
 
