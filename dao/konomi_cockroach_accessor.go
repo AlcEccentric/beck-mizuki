@@ -75,6 +75,51 @@ func (accessor *KonomiCRAccessor) GetUserIdsPaginated(offset, limit int) ([]stri
 	return rows, nil
 }
 
+func (accessor *KonomiCRAccessor) GetSubjectIdsPaginated(offset, limit int) ([]string, error) {
+	stmt := BgmUserCollection.SELECT(DISTINCT(BgmUserCollection.SubjectID)).
+		FROM(BgmUserCollection).
+		LIMIT(int64(limit)).
+		OFFSET(int64(offset))
+
+	var rows []string
+	err := stmt.Query(accessor.db, &rows)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+func (accessor *KonomiCRAccessor) GetSubjectIds() ([]string, error) {
+	stmt := BgmUserCollection.SELECT(DISTINCT(BgmUserCollection.SubjectID)).
+		FROM(BgmUserCollection)
+
+	var rows []string
+	err := stmt.Query(accessor.db, &rows)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+func (accessor *KonomiCRAccessor) GetRatings(sid string) ([]int, error) {
+	stmt := BgmUserCollection.SELECT(BgmUserCollection.Rating).
+		FROM(BgmUserCollection).
+		WHERE(BgmUserCollection.SubjectID.EQ(String(sid)))
+
+	var rows []int
+	err := stmt.Query(accessor.db, &rows)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
 func (accessor *KonomiCRAccessor) GetUser(uid string) (model.User, error) {
 	stmt := BgmUser.SELECT(BgmUser.AllColumns).
 		FROM(BgmUser).
